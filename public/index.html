@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Padala（仮）— 日比SC送金デモ</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231b2338'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='700' fill='%23f2b441'%3E₱%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="stage">
+  <div class="phone" role="application" aria-label="送金アプリのデモ">
+    <header class="app-head">
+      <span class="wordmark">PADALA<sup class="mark-sub">仮</sup></span>
+      <span class="route">日本 <span class="route-arrow" aria-hidden="true">→</span> フィリピン</span>
+    </header>
+
+    <!-- ① Send -->
+    <main id="screen-send" class="screen">
+      <label class="field-label" for="jpy">送る金額</label>
+      <div class="amount-row">
+        <span class="yen-mark" aria-hidden="true">¥</span>
+        <input id="jpy" inputmode="numeric" autocomplete="off" placeholder="0" aria-describedby="receipt">
+      </div>
+      <div class="chips" role="group" aria-label="金額の例">
+        <button class="chip" data-jpy="1000">¥1,000</button>
+        <button class="chip" data-jpy="2000">¥2,000</button>
+        <button class="chip" data-jpy="30000">¥30,000</button>
+      </div>
+
+      <dl class="receipt" id="receipt" aria-live="polite">
+        <div class="r-row">
+          <dt>市場レート<span class="tag tag-quiet">仲値</span></dt>
+          <dd><span class="num" id="mid">–</span> <span class="r-unit">ペソ / 円</span></dd>
+        </div>
+        <p class="r-source">出典 open.er-api.com ・ 基準 <span id="rate-time">取得中…</span></p>
+        <div class="r-row">
+          <dt>サービス手数料<span class="tag tag-open">全額開示</span></dt>
+          <dd><span class="num" id="fee">–</span></dd>
+        </div>
+        <p class="r-source">0.95%（デモ設定値）・レートへの上乗せなし</p>
+        <div class="r-row r-muted">
+          <dt>経路</dt>
+          <dd><span class="num" id="usdc">–</span> USDC <span class="r-unit">（1 USDC = 1米ドル）</span></dd>
+        </div>
+      </dl>
+
+      <section class="receive-card" aria-label="受け取り額">
+        <p class="rc-label">受け取り額 <span class="rc-cur">フィリピンペソ</span></p>
+        <p class="rc-amount"><span class="rc-peso">₱</span><span class="num" id="php">0</span></p>
+        <div class="rc-ghost">
+          <p>従来型送金<span class="ghost-tag">業界平均 6〜7%のコスト</span>なら <s class="num" id="trad">₱0</s></p>
+          <p class="rc-diff">この送金では <strong class="num" id="diff">+₱0</strong> 多く届きます</p>
+        </div>
+      </section>
+
+      <button id="send-btn" class="cta" disabled>このレートで送金する</button>
+      <p class="arrive">着金まで数秒 — チェーン確定で完了します</p>
+      <p class="error" id="send-error" role="alert" hidden></p>
+    </main>
+
+    <!-- ② Status -->
+    <main id="screen-status" class="screen" hidden>
+      <ol class="steps">
+        <li id="st-1" class="step">送信</li>
+        <li id="st-2" class="step">チェーン確定</li>
+        <li id="st-3" class="step">着金</li>
+      </ol>
+      <div class="clock-wrap">
+        <p class="clock"><span class="num" id="clock">0.00</span><span class="clock-unit">秒</span></p>
+        <p class="clock-caption" id="clock-caption">ブロックチェーンで確定中…</p>
+      </div>
+      <p class="status-amount">₱<span class="num" id="status-php">0</span> を送金中</p>
+    </main>
+
+    <!-- ③ Receive（受取側＝フィリピン・英語） -->
+    <main id="screen-receive" class="screen screen-receive" lang="en" hidden>
+      <div class="rx-card">
+        <p class="rx-check" aria-hidden="true">✓</p>
+        <p class="rx-label">Money received</p>
+        <p class="rx-amount"><span class="rc-peso">₱</span><span class="num" id="rx-php">0</span></p>
+        <p class="rx-from">from Kanji O. · Tokyo → Manila</p>
+        <p class="rx-proof">
+          Confirmed in <span class="num" id="rx-sec">–</span>s ·
+          <a id="rx-explorer" href="#" target="_blank" rel="noopener">On-chain receipt ↗</a>
+        </p>
+      </div>
+      <button id="again" class="cta cta-quiet" lang="ja">はじめから（デモをリセット）</button>
+    </main>
+  </div>
+  <p class="stage-caption">ライブデモ: Solana devnet（テストネット）・実トランザクション</p>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

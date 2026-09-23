@@ -1,0 +1,162 @@
+/* デュアルフォン・ステージビュー
+   凍結デザイン: ui-refs/design-freeze/html/Dual Phone Stage View.dc.html からの転記。
+   値の変更は NEXT_STAGE.md §4 承認済み逸脱リストのみ（各所に[逸脱#n]と注記）。 */
+
+html, body { margin: 0; padding: 0; height: 100%; background: #060D09; overflow: hidden; }
+
+a { color: #C9F06F; text-decoration: none; }
+a:hover { color: #E4F9B0; }
+@keyframes pulseGlow { 0%, 100% { opacity: .85 } 50% { opacity: 1 } }
+
+.sg { font-family: 'Space Grotesk', sans-serif; }
+
+/* ---- キャンバス: 1920×1080固定・中央フィット（--stage-scale は stage.js が設定） ---- */
+#stage {
+  width: 1920px; height: 1080px; box-sizing: border-box;
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%) scale(var(--stage-scale, 1));
+  overflow: hidden; background: #F6F5F0;
+  font-family: 'Zen Kaku Gothic New', sans-serif; color: #EDF2E4;
+  display: flex; align-items: center; justify-content: center;
+  gap: 96px; padding: 44px 96px 64px;
+}
+
+/* ---- フォン筐体 ---- */
+.phone {
+  width: 470px; height: 972px; flex: 0 0 auto; border-radius: 56px;
+  border: 1px solid rgba(10, 22, 14, 0.25);
+  box-shadow: 0 30px 80px rgba(10, 22, 14, 0.28), inset 0 0 0 9px #08110B;
+  padding: 44px 38px; box-sizing: border-box;
+  display: flex; flex-direction: column;
+}
+.phone-left  { background: #0C1A11; }
+.phone-right { background: #0D1D12; }
+
+/* ---- ヘッダ（言語チップ＋都市名） ---- */
+.phone-head { display: flex; align-items: center; justify-content: space-between; }
+.chips { display: flex; gap: 6px; }
+.chip {
+  font-size: 13px; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid rgba(237, 242, 228, 0.18); color: rgba(237, 242, 228, 0.55);
+}
+.chip.on {
+  font-weight: 700; padding: 6px 14px; border: none;
+  background: #C9F06F; color: #0A160E; white-space: nowrap;
+}
+.loc { font-size: 13px; color: rgba(237, 242, 228, 0.45); }
+
+/* ---- 左フォン: input/done 共通本体 ---- */
+.lp-main { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.amt-label { margin-top: 68px; font-size: 17px; color: rgba(237, 242, 228, 0.55); }
+.amt-row { margin-top: 8px; display: flex; align-items: flex-end; gap: 6px; cursor: text; } /* [逸脱#7]③ ホバーでテキストカーソル */
+.amt {
+  display: flex; align-items: flex-end; /* ¥とinputは同フォント同サイズ=下端揃えでベースライン一致（baselineだと1pxずれる） */
+  font-family: 'Space Grotesk', sans-serif; font-variant-numeric: tabular-nums;
+  font-size: 68px; font-weight: 700; line-height: 1; color: #EDF2E4;
+}
+#jpy {
+  font: inherit; font-variant-numeric: tabular-nums; color: inherit;
+  background: none; border: none; outline: none; padding: 0; margin: 0;
+  line-height: 1; height: 68px; /* inputの内因サイズ(86px)を凍結の68px divに合わせる */
+  min-width: 0; width: 220px;
+  caret-color: transparent; /* ネイティブキャレット非表示（§2）→カスタムキャレット .caret を表示 */
+}
+.caret { width: 3px; height: 56px; background: #C9F06F; animation: pulseGlow 1.2s ease-in-out infinite; }
+
+/* 明細行 */
+.rows { margin-top: 56px; display: flex; flex-direction: column; }
+.row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 16px 0; border-top: 1px solid rgba(237, 242, 228, 0.10);
+}
+.row-l { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
+.row-name { font-size: 15px; color: rgba(237, 242, 228, 0.72); white-space: nowrap; }
+.fee-badge {
+  font-size: 11px; padding: 3px 8px; border-radius: 999px;
+  border: 1px solid rgba(201, 240, 111, 0.4); color: #C9F06F; white-space: nowrap;
+}
+.row-sub { font-size: 11px; margin-top: 3px; color: rgba(237, 242, 228, 0.38); font-family: 'Space Grotesk', sans-serif; }
+.row-val { font-family: 'Space Grotesk', sans-serif; font-variant-numeric: tabular-nums; font-size: 17px; font-weight: 500; }
+.row-total {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 20px 0 0; border-top: 1px solid rgba(201, 240, 111, 0.35);
+}
+.total-name { font-size: 15px; font-weight: 700; }
+.total-val { font-family: 'Space Grotesk', sans-serif; font-variant-numeric: tabular-nums; font-size: 30px; font-weight: 700; color: #C9F06F; }
+
+/* 最下部: CTA（input）／完了行（done） */
+.lp-bottom { margin-top: auto; }
+.cta {
+  width: 100%; box-sizing: border-box; text-align: center; padding: 20px 0;
+  border-radius: 20px; background: #C9F06F; color: #0A160E;
+  font-size: 19px; font-weight: 700; box-shadow: 0 0 50px rgba(201, 240, 111, 0.3);
+  cursor: pointer; user-select: none;
+}
+/* [逸脱#3] エラー表示（凍結HTML未定義のため新規定義・パレット内の色のみ） */
+.send-error { margin-top: 12px; text-align: center; font-size: 13px; color: rgba(237, 242, 228, 0.72); }
+.done-line { text-align: center; font-size: 13px; color: rgba(237, 242, 228, 0.45); }
+.done-line span { font-family: 'Space Grotesk', sans-serif; font-variant-numeric: tabular-nums; color: rgba(237, 242, 228, 0.7); }
+
+/* ---- 左フォン: sending ---- */
+.lp-sending { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+.send-clock { display: flex; align-items: baseline; }
+#clock {
+  font-family: 'Space Grotesk', sans-serif; font-variant-numeric: tabular-nums;
+  font-size: 96px; font-weight: 700; line-height: 1; color: #C9F06F;
+  text-shadow: 0 0 80px rgba(201, 240, 111, 0.4);
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+/* [逸脱#1] 秒単位を追加（完了行の「0.79 秒」と同じ関係=数字より小さく・薄く・地の書体） */
+.clock-unit { margin-left: 10px; font-size: 30px; color: rgba(237, 242, 228, 0.45); }
+.send-caption { font-size: 15px; color: rgba(237, 242, 228, 0.4); }
+
+/* ---- 右フォン: 待機 ---- */
+.rp-wait { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
+/* [逸脱#2] 点10px→16px・外側48pxの淡い脈動リング・Naghihintay…15px→19px */
+.wait-ring { position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+.wait-ring::before {
+  content: ''; position: absolute; inset: 0; border-radius: 999px;
+  border: 1.5px solid rgba(201, 240, 111, 0.22);
+  animation: pulseGlow 2.4s ease-in-out infinite;
+}
+.wait-dot { width: 16px; height: 16px; border-radius: 999px; background: rgba(201, 240, 111, 0.5); animation: pulseGlow 2.4s ease-in-out infinite; }
+.wait-text { font-size: 19px; color: rgba(237, 242, 228, 0.35); font-family: 'Space Grotesk', sans-serif; }
+
+/* ---- 右フォン: 着金（done） ---- */
+.rp-done { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.rd-l1 { font-size: 28px; color: rgba(237, 242, 228, 0.75); font-family: 'Space Grotesk', sans-serif; }
+.rd-amt {
+  margin-top: 20px; font-family: 'Space Grotesk', sans-serif; font-variant-numeric: tabular-nums;
+  font-size: 90px; font-weight: 700; line-height: 1; letter-spacing: -0.02em;
+  color: #C9F06F; text-shadow: 0 0 90px rgba(201, 240, 111, 0.45);
+}
+.rd-from { margin-top: 36px; font-size: 17px; color: rgba(237, 242, 228, 0.45); font-family: 'Space Grotesk', sans-serif; }
+.rd-cmp-label { margin-top: 14px; font-size: 12px; color: rgba(237, 242, 228, 0.45); font-family: 'Space Grotesk', sans-serif; }
+.rd-cmp-val { margin-top: 4px; font-size: 14px; color: #C9F06F; font-family: 'Space Grotesk', sans-serif; }
+.rp-done-bottom { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.rd-sec { font-size: 13px; color: rgba(237, 242, 228, 0.45); font-family: 'Space Grotesk', sans-serif; font-variant-numeric: tabular-nums; }
+.rd-link { font-size: 12px; font-family: 'Space Grotesk', sans-serif; }
+
+/* ---- キャンバス最下部キャプション ---- */
+.stage-caption {
+  position: absolute; left: 0; right: 0; bottom: 24px; text-align: center;
+  font-size: 13px; letter-spacing: 0.06em; color: rgba(10, 22, 14, 0.45);
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* ---- 金額入力の幅追従用ミラー（transform の外・不可視） ---- */
+#amt-mirror {
+  position: absolute; top: -9999px; left: -9999px; visibility: hidden; white-space: pre;
+  font-family: 'Space Grotesk', sans-serif; font-variant-numeric: tabular-nums;
+  font-size: 68px; font-weight: 700; line-height: 1;
+}
+
+/* ---- 状態切替（#stage[data-state] が唯一のスイッチ） ---- */
+#stage[data-state="sending"] .lp-main { display: none; }
+#stage[data-state="sending"] .phone-left .phone-head { display: none; } /* 凍結の送金中=全面沈め（ヘッダなし） */
+#stage:not([data-state="sending"]) .lp-sending { display: none; }
+#stage:not([data-state="input"]) .only-input { display: none; }
+#stage:not([data-state="done"]) .only-done { display: none; }
+#stage:not([data-state="done"]) .rp-done,
+#stage:not([data-state="done"]) .rp-done-bottom { display: none; }
+#stage[data-state="done"] .rp-wait { display: none; }
