@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Padala — Money received</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="ph">
+<div class="stage">
+<div class="phone" id="app">
+  <header class="app-head">
+    <span class="wordmark">PADALA</span>
+    <span class="net">devnet</span>
+  </header>
+  <main class="screen screen-rx">
+    <div class="rx-card">
+      <p class="rx-check" aria-hidden="true">✓</p>
+      <p class="rx-label">Money received</p>
+      <p class="rx-amount"><span class="peso">₱</span><span class="num" id="rx-php">0</span></p>
+      <p class="rx-from">from <span id="rx-from">—</span> in Japan · for <span id="rx-name">you</span></p>
+      <p class="rx-proof" id="rx-proof">Checking on Solana…</p>
+    </div>
+
+    <p class="label">Turn it into pesos in GCash</p>
+    <ol class="steps-text en">
+      <li>Open <strong>GCash</strong> → <strong>GCrypto</strong></li>
+      <li>You'll see <strong><span class="num" id="rx-usdc">0</span> USDC</strong> (1 USDC = 1 US dollar)</li>
+      <li>Tap <strong>Sell</strong> → choose USDC → pesos go to your GCash balance</li>
+    </ol>
+    <p class="fine">GCrypto is run by PDAX, a BSP-licensed exchange. Receiving is free. Padala never holds your money.</p>
+
+    <p class="label">Or keep it in dollars</p>
+    <p class="lead small">You don't have to convert today. USDC stays worth one US dollar until you need pesos.</p>
+
+    <a class="rcp-link" id="rx-explorer" href="#" target="_blank" rel="noopener">View the on-chain receipt ↗</a>
+  </main>
+</div>
+<p class="stage-caption">Padala · self-custody · Solana devnet</p>
+</div>
+<script src="vendor/solana-web3.iife.min.js"></script>
+<script>
+(async () => {
+  const q = new URLSearchParams(location.search);
+  const $ = (id) => document.getElementById(id);
+  const n = (v, d = 0) => Number(v).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+  $('rx-php').textContent = n(q.get('php') || 0);
+  $('rx-usdc').textContent = n(q.get('usdc') || 0, 2);
+  $('rx-from').textContent = q.get('from') || 'family';
+  $('rx-name').textContent = q.get('name') || 'you';
+  const sig = q.get('sig');
+  if (!sig) { $('rx-proof').textContent = 'No transaction reference.'; return; }
+  $('rx-explorer').href = `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
+  try {
+    const conn = new solanaWeb3.Connection('https://api.devnet.solana.com', 'confirmed');
+    const st = await conn.getSignatureStatuses([sig], { searchTransactionHistory: true });
+    const s = st.value[0];
+    if (s && !s.err) $('rx-proof').textContent = `Confirmed on Solana · ${s.confirmationStatus}`;
+    else if (s && s.err) $('rx-proof').textContent = 'This transfer failed on-chain.';
+    else $('rx-proof').textContent = 'Not found yet — check again in a moment.';
+  } catch (e) { $('rx-proof').textContent = 'Could not reach the network. The receipt link still works.'; }
+})();
+</script>
+</body>
+</html>

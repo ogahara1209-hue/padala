@@ -2,97 +2,205 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Padala（仮）— 日比SC送金デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Padala — 家族へ、見えるレートで</title>
+<meta name="description" content="日本で働くフィリピン人のための、自分で持つ送金財布。仲値で送り、家族は GCash で受け取る。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231b2338'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='700' fill='%23f2b441'%3E₱%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="stage">
-  <div class="phone" role="application" aria-label="送金アプリのデモ">
-    <header class="app-head">
-      <span class="wordmark">PADALA<sup class="mark-sub">仮</sup></span>
-      <span class="route">日本 <span class="route-arrow" aria-hidden="true">→</span> フィリピン</span>
-    </header>
+<div class="phone" id="app">
 
-    <!-- ① Send -->
-    <main id="screen-send" class="screen">
-      <label class="field-label" for="jpy">送る金額</label>
-      <div class="amount-row">
-        <span class="yen-mark" aria-hidden="true">¥</span>
-        <input id="jpy" inputmode="numeric" autocomplete="off" placeholder="0" aria-describedby="receipt">
+  <header class="app-head">
+    <span class="wordmark">PADALA</span>
+    <span class="net" title="Solana devnet（練習用ネット・実際のお金は動きません）">devnet</span>
+  </header>
+
+  <!-- ─── 0. はじめて ─── -->
+  <main id="screen-onboard" class="screen" hidden>
+    <p class="eyebrow">はじめに</p>
+    <h1 class="h1">この財布は、<br>あなただけが持ちます。</h1>
+    <p class="lead">鍵はこの端末の中で作られ、Padala は預かりません。送るときも、あなたの端末が署名します。</p>
+    <ul class="facts">
+      <li>送る前に、家族が受け取るペソを全部見せます</li>
+      <li>家族は GCash の中で受け取れます</li>
+      <li>送るたびに、証明書が残ります</li>
+    </ul>
+    <button id="create-wallet" class="cta">財布を作る</button>
+    <p class="fine">練習用ネット（devnet）で動いています。実際のお金は動きません。</p>
+  </main>
+
+  <!-- ─── 1. 財布 ─── -->
+  <main id="screen-home" class="screen" hidden>
+    <section class="balance">
+      <p class="eyebrow">残高</p>
+      <p class="bal-usdc"><span class="num" id="bal-usdc">0.00</span> <span class="unit">USDC</span></p>
+      <p class="bal-jpy">≈ ¥<span class="num" id="bal-jpy">0</span><span class="bal-note">・1 USDC = 1 米ドル</span></p>
+    </section>
+    <section class="addr-card">
+      <p class="label">あなたの入金アドレス</p>
+      <p class="mono addr" id="my-addr">…</p>
+      <div class="row-btns">
+        <button class="btn-quiet" id="copy-addr">コピー</button>
+        <button class="btn-quiet" id="show-topup">入金する</button>
       </div>
-      <div class="chips" role="group" aria-label="金額の例">
-        <button class="chip" data-jpy="1000">¥1,000</button>
-        <button class="chip" data-jpy="2000">¥2,000</button>
-        <button class="chip" data-jpy="30000">¥30,000</button>
-      </div>
-
-      <dl class="receipt" id="receipt" aria-live="polite">
-        <div class="r-row">
-          <dt>市場レート<span class="tag tag-quiet">仲値</span></dt>
-          <dd><span class="num" id="mid">–</span> <span class="r-unit">ペソ / 円</span></dd>
-        </div>
-        <p class="r-source">出典 open.er-api.com ・ 基準 <span id="rate-time">取得中…</span></p>
-        <div class="r-row">
-          <dt>サービス手数料<span class="tag tag-open">全額開示</span></dt>
-          <dd><span class="num" id="fee">–</span></dd>
-        </div>
-        <p class="r-source">0.95%（デモ設定値）・レートへの上乗せなし</p>
-        <div class="r-row r-muted">
-          <dt>経路</dt>
-          <dd><span class="num" id="usdc">–</span> USDC <span class="r-unit">（1 USDC = 1米ドル）</span></dd>
-        </div>
-      </dl>
-
-      <section class="receive-card" aria-label="受け取り額">
-        <p class="rc-label">受け取り額 <span class="rc-cur">フィリピンペソ</span></p>
-        <p class="rc-amount"><span class="rc-peso">₱</span><span class="num" id="php">0</span></p>
-        <div class="rc-ghost">
-          <p>従来型送金<span class="ghost-tag">業界平均 6〜7%のコスト</span>なら <s class="num" id="trad">₱0</s></p>
-          <p class="rc-diff">この送金では <strong class="num" id="diff">+₱0</strong> 多く届きます</p>
-        </div>
-      </section>
-
-      <button id="send-btn" class="cta" disabled>このレートで送金する</button>
-      <p class="arrive">着金まで数秒 — チェーン確定で完了します</p>
-      <p class="error" id="send-error" role="alert" hidden></p>
-    </main>
-
-    <!-- ② Status -->
-    <main id="screen-status" class="screen" hidden>
-      <ol class="steps">
-        <li id="st-1" class="step">送信</li>
-        <li id="st-2" class="step">チェーン確定</li>
-        <li id="st-3" class="step">着金</li>
+    </section>
+    <section class="explain">
+      <p class="label">入金のしかた</p>
+      <ol class="steps-text">
+        <li>登録業者（SBI VCトレード）で円から USDC を買う</li>
+        <li>出庫先に、上のアドレスを登録する</li>
+        <li>出庫する。数秒でここに届きます</li>
       </ol>
-      <div class="clock-wrap">
-        <p class="clock"><span class="num" id="clock">0.00</span><span class="clock-unit">秒</span></p>
-        <p class="clock-caption" id="clock-caption">ブロックチェーンで確定中…</p>
-      </div>
-      <p class="status-amount">₱<span class="num" id="status-php">0</span> を送金中</p>
-    </main>
+      <p class="fine">Padala は円を受け取らず、USDC を買いません。買うのは登録業者、持つのはあなたです。</p>
+    </section>
+    <p class="fine" id="sol-line">手数料用 SOL: <span class="num" id="bal-sol">0</span></p>
+  </main>
 
-    <!-- ③ Receive（受取側＝フィリピン・英語） -->
-    <main id="screen-receive" class="screen screen-receive" lang="en" hidden>
-      <div class="rx-card">
-        <p class="rx-check" aria-hidden="true">✓</p>
-        <p class="rx-label">Money received</p>
-        <p class="rx-amount"><span class="rc-peso">₱</span><span class="num" id="rx-php">0</span></p>
-        <p class="rx-from">from Kanji O. · Tokyo → Manila</p>
-        <p class="rx-proof">
-          Confirmed in <span class="num" id="rx-sec">–</span>s ·
-          <a id="rx-explorer" href="#" target="_blank" rel="noopener">On-chain receipt ↗</a>
-        </p>
-      </div>
-      <button id="again" class="cta cta-quiet" lang="ja">はじめから（デモをリセット）</button>
-    </main>
+  <!-- ─── 2. 送る ─── -->
+  <main id="screen-send" class="screen" hidden>
+    <p class="label">送る相手</p>
+    <div class="book" id="book"></div>
+
+    <label class="label" for="jpy">送る金額</label>
+    <div class="amount-row">
+      <span class="yen" aria-hidden="true">¥</span>
+      <input id="jpy" inputmode="numeric" autocomplete="off" placeholder="0" aria-describedby="quote">
+    </div>
+    <div class="chips" role="group" aria-label="金額の例">
+      <button class="chip" data-jpy="5000">¥5,000</button>
+      <button class="chip" data-jpy="10000">¥10,000</button>
+      <button class="chip" data-jpy="30000">¥30,000</button>
+    </div>
+
+    <dl class="quote" id="quote" aria-live="polite">
+      <div class="q-row"><dt>仲値<span class="tag">市場レート</span></dt><dd><span class="num" id="q-mid">–</span> <span class="unit">₱ / ¥</span></dd></div>
+      <div class="q-row"><dt>レートへの上乗せ</dt><dd class="num">0</dd></div>
+      <div class="q-row"><dt>手数料</dt><dd><span class="num" id="q-fee">ネットワーク手数料のみ</span></dd></div>
+      <div class="q-row q-muted"><dt>チェーンに乗る額</dt><dd><span class="num" id="q-usdc">–</span> USDC</dd></div>
+      <p class="q-src">出典 <span id="q-src">–</span>・基準 <span id="q-time">–</span></p>
+    </dl>
+
+    <section class="receive-card">
+      <p class="rc-label">家族が受け取る額</p>
+      <p class="rc-amount"><span class="peso">₱</span><span class="num" id="q-php">0</span></p>
+      <p class="rc-sub" id="q-to">—</p>
+    </section>
+
+    <button id="review-btn" class="cta" disabled>内容を確認する</button>
+    <p class="error" id="send-error" role="alert" hidden></p>
+    <p class="fine">送った後に取り消せません。次の画面で相手と金額をもう一度確認します。</p>
+  </main>
+
+  <!-- ─── 2b. 確認（誤送金防止） ─── -->
+  <main id="screen-confirm" class="screen" hidden>
+    <p class="eyebrow">最終確認</p>
+    <h2 class="h2">この内容で送ります</h2>
+    <dl class="confirm">
+      <div><dt>相手</dt><dd id="c-name">–</dd></div>
+      <div><dt>アドレス</dt><dd class="mono" id="c-addr">–</dd></div>
+      <div><dt>送る額</dt><dd>¥<span class="num" id="c-jpy">0</span></dd></div>
+      <div><dt>家族が受け取る額</dt><dd class="big">₱<span class="num" id="c-php">0</span></dd></div>
+    </dl>
+    <button id="send-btn" class="cta">送る</button>
+    <button id="back-btn" class="cta cta-quiet">戻る</button>
+  </main>
+
+  <!-- ─── 3. 送信中 ─── -->
+  <main id="screen-status" class="screen" hidden>
+    <ol class="steps">
+      <li id="st-1" class="step">署名</li>
+      <li id="st-2" class="step">チェーン確定</li>
+      <li id="st-3" class="step">着金</li>
+    </ol>
+    <div class="clock-wrap">
+      <p class="clock"><span class="num" id="clock">0.00</span><span class="clock-unit">秒</span></p>
+      <p class="clock-caption" id="clock-caption">あなたの端末で署名しています…</p>
+    </div>
+    <p class="status-amount">₱<span class="num" id="status-php">0</span> を <span id="status-to">—</span> へ</p>
+  </main>
+
+  <!-- ─── 4. 証明書 ─── -->
+  <main id="screen-receipt" class="screen" hidden>
+    <article class="receipt" id="receipt">
+      <header class="rcp-head">
+        <span class="wordmark small">PADALA</span>
+        <span class="rcp-no mono" id="r-no">PDL-0000</span>
+      </header>
+      <p class="rcp-title">送金証明</p>
+      <p class="rcp-sub">Remittance receipt · on-chain</p>
+      <dl class="rcp">
+        <div><dt>日時</dt><dd id="r-time">–</dd></div>
+        <div><dt>送金者</dt><dd class="mono" id="r-from">–</dd></div>
+        <div><dt>受取人</dt><dd id="r-to">–</dd></div>
+        <div><dt>送金額</dt><dd>¥<span class="num" id="r-jpy">0</span></dd></div>
+        <div><dt>換算</dt><dd><span class="num" id="r-usdc">0</span> USDC</dd></div>
+        <div><dt>適用レート（仲値）</dt><dd><span class="num" id="r-rate">0</span> ₱/¥</dd></div>
+        <div><dt>受取額</dt><dd class="big">₱<span class="num" id="r-php">0</span></dd></div>
+        <div><dt>確定まで</dt><dd><span class="num" id="r-sec">0</span> 秒</dd></div>
+      </dl>
+      <p class="stamp-label">トランザクション署名（改ざんできない記録）</p>
+      <p class="stamp mono" id="r-sig">–</p>
+      <a class="rcp-link" id="r-explorer" href="#" target="_blank" rel="noopener">Solana Explorer で確認 ↗</a>
+      <p class="rcp-fine">扶養控除の申告等に使う際は、税務署・勤務先の指定書式をご確認ください。本証明はチェーン上の記録を転記したものです。</p>
+    </article>
+    <div class="row-btns">
+      <button class="cta" id="print-btn">印刷 / PDF に保存</button>
+    </div>
+    <div class="row-btns">
+      <button class="btn-quiet" id="family-link">家族に知らせるリンクをコピー</button>
+      <button class="btn-quiet" id="to-history">履歴へ</button>
+    </div>
+  </main>
+
+  <!-- ─── 5. 履歴 ─── -->
+  <main id="screen-history" class="screen" hidden>
+    <p class="eyebrow">履歴</p>
+    <p class="hist-sum">今月 ¥<span class="num" id="h-month">0</span>・累計 <span class="num" id="h-count">0</span> 件</p>
+    <ul class="hist" id="hist"></ul>
+    <p class="empty" id="hist-empty">まだ送金はありません。「送る」から始められます。</p>
+  </main>
+
+  <nav class="tabs" id="tabs" hidden>
+    <button data-screen="screen-send" class="tab on">送る</button>
+    <button data-screen="screen-history" class="tab">履歴</button>
+    <button data-screen="screen-home" class="tab">財布</button>
+  </nav>
+
+  <!-- ─── modal: 入金（devnet） ─── -->
+  <div class="sheet" id="sheet-topup" hidden>
+    <div class="sheet-body">
+      <h2 class="h2">入金する</h2>
+      <p class="lead">本番では登録業者から出庫します。この練習用ネットでは、試験用の USDC を受け取れます。</p>
+      <button class="cta" id="fund-btn">試験用の 20 USDC を受け取る</button>
+      <p class="error" id="fund-error" hidden></p>
+      <button class="cta cta-quiet" data-close>閉じる</button>
+    </div>
   </div>
-  <p class="stage-caption">ライブデモ: Solana devnet（テストネット）・実トランザクション</p>
+
+  <!-- ─── modal: 相手を追加 ─── -->
+  <div class="sheet" id="sheet-add" hidden>
+    <div class="sheet-body">
+      <h2 class="h2">送る相手を追加</h2>
+      <label class="label" for="add-name">名前（表示用）</label>
+      <input id="add-name" class="input" placeholder="例: Nanay（マニラ）">
+      <label class="label" for="add-addr">GCrypto の受取アドレス（Solana）</label>
+      <input id="add-addr" class="input mono" placeholder="家族の GCash → GCrypto → Receive → USDC (Solana)">
+      <p class="fine">家族の GCash アプリの GCrypto で「Receive」→ USDC → Solana を選ぶと表示されます。</p>
+      <p class="error" id="add-error" hidden></p>
+      <button class="cta" id="add-save">保存</button>
+      <button class="cta cta-quiet" data-close>閉じる</button>
+    </div>
+  </div>
+
 </div>
+<p class="stage-caption">Padala · self-custody · Solana devnet</p>
+</div>
+<script src="vendor/solana-web3.iife.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
