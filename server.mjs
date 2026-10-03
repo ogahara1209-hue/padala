@@ -141,7 +141,9 @@ const server = http.createServer(async (req, res) => {
       const result = await relay(await readJson(req));
       return json(result.error ? 400 : 200, result);
     }
-    let file = path.join(PUBLIC, url.pathname === '/' ? 'index.html' : url.pathname);
+    // "/" = the approved dual-phone stage (Aug 2 design freeze); "/wallet" = the full wallet app
+    let file = path.join(PUBLIC, url.pathname === '/' ? 'stage.html' : url.pathname);
+    if (url.pathname === '/wallet') file = path.join(PUBLIC, 'index.html');
     if (url.pathname === '/r') file = path.join(PUBLIC, 'receive.html');
     if (!file.startsWith(PUBLIC) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
