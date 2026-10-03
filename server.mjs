@@ -23,6 +23,7 @@ const USDC = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';            // Circle 
 const DECIMALS = 6;
 const PORT = Number(process.env.PORT ?? 4173);
 const FUND_USDC = 5n * 10n ** 6n;                                     // 5 test USDC per top-up
+const FEE_BPS = 95n;                                                  // service fee 0.95% of the total (provisional, as in the Aug 2 design)
 const PUBLIC = path.join(__dirname, 'public');
 
 const USDC_ABI = [
@@ -48,7 +49,8 @@ const usdc = new Contract(USDC, USDC_ABI, ops ?? provider);
 // ---- rate (one source only; mixing sources produced negative "savings" in the Aug 1 test) ----
 let rateCache = null;
 async function getRate() {
-  if (rateCache && Date.now() - rateCache.fetchedAt < 10 * 60 * 1000) return rateCache;
+  const withFee = (r) => ({ ...r, feeBps: Number(FEE_BPS), feeTo: ops?.address ?? null });
+  if (rateCache && Date.now() - rateCache.fetchedAt < 10 * 60 * 1000) return withFee(rateCache);
   const res = await fetch('https://open.er-api.com/v6/latest/JPY');
   if (!res.ok) throw new Error(`rate API HTTP ${res.status}`);
   const data = await res.json();
@@ -61,7 +63,7 @@ async function getRate() {
     source: 'open.er-api.com',
     fetchedAt: Date.now(),
   };
-  return rateCache;
+  return withFee(rateCache);
 }
 
 // ---- one transaction at a time from the ops key (avoids nonce collisions) ----
@@ -86,33 +88,55 @@ async function fund(address) {
   }
 }
 
-// ---- relay a signed EIP-3009 authorization ----
+// ---- relay a signed EIP-3009 authorization (+ the service fee, signed separately) ----
+// The user signs two authorizations: the transfer to the family, and the fee to Padala's address.
+// Both recipients and amounts are fixed by the user's signatures; the server can only submit or refuse.
+async function checkAuth(message, signature) {
+  const signer = verifyTypedData(DOMAIN, TYPES, message, signature);
+  if (signer !== message.from) return 'Signature does not match the sender.';
+  if (BigInt(Math.floor(Date.now() / 1000)) >= message.validBefore) return 'This authorization has expired. Please send again.';
+  if (await usdc.authorizationState(message.from, message.nonce)) return 'This authorization was already used.';
+  return null;
+}
+const toMessage = (from, a) => ({
+  from: getAddress(from), to: getAddress(a.to), value: BigInt(a.value),
+  validAfter: BigInt(a.validAfter), validBefore: BigInt(a.validBefore), nonce: a.nonce,
+});
+const submit = (m, signature) => serial(async () => {
+  const { v, r, s } = Signature.from(signature);
+  const tx = await usdc.transferWithAuthorization(m.from, m.to, m.value, m.validAfter, m.validBefore, m.nonce, v, r, s);
+  return tx.wait(1);
+});
+
 const relayedPerAddress = new Map();
 async function relay(body) {
   if (!ops) return { error: 'Relayer is not configured on this server.' };
-  const { from, to, value, validAfter, validBefore, nonce, signature } = body ?? {};
-  if (![from, to].every(isAddress)) return { error: 'Invalid address.' };
-  if (!/^0x[0-9a-fA-F]{64}$/.test(String(nonce))) return { error: 'Invalid nonce.' };
-  const message = { from: getAddress(from), to: getAddress(to), value: BigInt(value), validAfter: BigInt(validAfter), validBefore: BigInt(validBefore), nonce };
-  if (message.value <= 0n) return { error: 'Amount must be positive.' };
-  const signer = verifyTypedData(DOMAIN, TYPES, message, signature);
-  if (signer !== message.from) return { error: 'Signature does not match the sender.' };
-  const now = BigInt(Math.floor(Date.now() / 1000));
-  if (now >= message.validBefore) return { error: 'This authorization has expired. Please send again.' };
-  if (await usdc.authorizationState(message.from, nonce)) return { error: 'This authorization was already used.' };
-  const balance = await usdc.balanceOf(message.from);
-  if (balance < message.value) return { error: 'Insufficient balance.' };
+  const { from, fee } = body ?? {};
+  if (!isAddress(from) || !isAddress(body.to) || !isAddress(fee?.to)) return { error: 'Invalid address.' };
+  if (![body.nonce, fee.nonce].every((n) => /^0x[0-9a-fA-F]{64}$/.test(String(n)))) return { error: 'Invalid nonce.' };
+  const main = toMessage(from, body);
+  const feeMsg = toMessage(from, fee);
+  if (main.value <= 0n) return { error: 'Amount must be positive.' };
+  if (feeMsg.to !== ops.address) return { error: 'The fee must be paid to Padala.' };
+  if (feeMsg.value * 10000n < (main.value + feeMsg.value) * FEE_BPS) return { error: 'The fee is lower than shown.' };
+  for (const [m, sig] of [[main, body.signature], [feeMsg, fee.signature]]) {
+    const err = await checkAuth(m, sig);
+    if (err) return { error: err };
+  }
+  const balance = await usdc.balanceOf(main.from);
+  if (balance < main.value + feeMsg.value) return { error: 'Insufficient balance.' };
   // light abuse guard for the shared testnet gas wallet
-  const times = (relayedPerAddress.get(message.from) ?? []).filter((t) => Date.now() - t < 3600 * 1000);
+  const times = (relayedPerAddress.get(main.from) ?? []).filter((t) => Date.now() - t < 3600 * 1000);
   if (times.length >= 20) return { error: 'Too many transfers from this address in the last hour.' };
-  relayedPerAddress.set(message.from, [...times, Date.now()]);
+  relayedPerAddress.set(main.from, [...times, Date.now()]);
 
-  const { v, r, s } = Signature.from(signature);
-  const receipt = await serial(async () => {
-    const tx = await usdc.transferWithAuthorization(message.from, message.to, message.value, message.validAfter, message.validBefore, nonce, v, r, s);
-    return tx.wait(1);
-  });
+  // the family's transfer first: the fee is only taken after the money has gone out
+  const receipt = await submit(main, body.signature);
   if (receipt.status !== 1) return { error: 'The transfer failed on-chain.', hash: receipt.hash };
+  // the fee goes on-chain in the background so the sender is not kept waiting for a second block
+  submit(feeMsg, fee.signature)
+    .then((r) => console.log(`fee ${r.status === 1 ? 'collected' : 'FAILED'} for ${receipt.hash}: ${r.hash}`))
+    .catch((e) => console.log(`fee not collected for ${receipt.hash}: ${e.shortMessage ?? e.message}`));
   return { ok: true, hash: receipt.hash, blockNumber: receipt.blockNumber };
 }
 

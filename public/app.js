@@ -60,22 +60,23 @@ async function refreshBalances() {
   return { usdc: balance };
 }
 
-// ───────── send: sign an EIP-3009 authorization, the server submits it ─────────
-async function sendUsdc(toAddress, usdcAmount) {
-  const value = E.parseUnits(usdcAmount.toFixed(DECIMALS), DECIMALS);
+// ───────── send: sign two EIP-3009 authorizations (family + service fee), the server submits them ─────────
+async function authorize(to, micro) {
   const message = {
-    from: wallet.address,
-    to: E.getAddress(toAddress),
-    value,
-    validAfter: 0n,
-    validBefore: BigInt(Math.floor(Date.now() / 1000) + 3600),
+    from: wallet.address, to: E.getAddress(to), value: BigInt(micro),
+    validAfter: 0n, validBefore: BigInt(Math.floor(Date.now() / 1000) + 3600),
     nonce: E.hexlify(E.randomBytes(32)),
   };
   const signature = await wallet.signTypedData(DOMAIN, TYPES, message);
+  return { to: message.to, value: message.value.toString(), validAfter: '0', validBefore: message.validBefore.toString(), nonce: message.nonce, signature };
+}
+async function sendUsdc(toAddress, q) {
+  const main = await authorize(toAddress, q.mainMicro);
+  const fee = await authorize(rate.feeTo, q.feeMicro);
   const res = await fetch('/api/relay', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...message, value: value.toString(), validAfter: '0', validBefore: message.validBefore.toString(), signature }),
+    body: JSON.stringify({ from: wallet.address, ...main, fee }),
   });
   const data = await res.json();
   if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
@@ -91,23 +92,27 @@ async function loadRate() {
   $('q-src').textContent = rate.source;
   $('q-time').textContent = new Date(rate.baseTime).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
+// amounts in 1e-6 USDC integers (same rounding as the server's fee check)
 function calc(jpy) {
-  const usdc = Math.floor(jpy * rate.usdPerJpy * 100) / 100;           // what goes on-chain
-  const php = usdc * rate.phpPerUsd;                                     // what the family sees at mid-rate
-  return { jpy, usdc, php, phpPerJpy: rate.phpPerJpy };
+  const total = Math.floor(jpy * rate.usdPerJpy * 100) * 10000;        // what leaves the wallet
+  const fee = Math.ceil((total * rate.feeBps) / 10000);                  // service fee to Padala
+  const main = total - fee;                                              // what the family receives
+  const usdc = main / 1e6;
+  return { jpy, totalMicro: total, feeMicro: fee, mainMicro: main, usdc, feeJpy: fee / 1e6 / rate.usdPerJpy, php: usdc * rate.phpPerUsd, phpPerJpy: rate.phpPerJpy };
 }
 function renderQuote() {
   const jpy = Number(($('jpy').value || '').replace(/[^\d]/g, ''));
   if (!rate || !jpy || !recipient) {
     quote = null;
-    $('q-usdc').textContent = '–'; $('q-php').textContent = '0';
+    $('q-usdc').textContent = '–'; $('q-php').textContent = '0'; $('q-fee').textContent = '¥0';
     $('review-btn').disabled = true;
     return;
   }
   quote = calc(jpy);
   $('q-usdc').textContent = jp(quote.usdc, 2);
   $('q-php').textContent = jp(quote.php, 0);
-  const over = quote.usdc > balance;
+  $('q-fee').textContent = `¥${jp(quote.feeJpy, 0)}`;
+  const over = quote.totalMicro / 1e6 > balance;
   $('review-btn').disabled = over || quote.usdc <= 0;
   $('send-error').hidden = !over;
   if (over) $('send-error').textContent = `残高（${jp(balance, 2)} USDC）を超えています。「財布」から入金してください。`;
@@ -202,7 +207,7 @@ async function doSend() {
   try {
     $('st-1').className = 'step done'; $('st-2').className = 'step on';
     $('clock-caption').textContent = 'Ethereum で確定中…（15〜30 秒ほど）';
-    const sig = await sendUsdc(to.address, q.usdc);
+    const sig = await sendUsdc(to.address, q);
     const seconds = (performance.now() - t0) / 1000;
     clearInterval(tick);
     $('clock').textContent = seconds.toFixed(2);

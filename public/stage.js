@@ -65,10 +65,16 @@ function syncWidth() {
   jpyInput.style.width = `${Math.ceil(mirror.getBoundingClientRect().width)}px`;
 }
 
-// app.js と同じ計算（手数料なし・チェーンに乗る USDC は 0.01 単位で切り捨て）
+// app.js と同じ計算。送る円を USDC に（0.01 単位で切り捨て）→ そこからサービス手数料を引いた残りが家族へ。
+// 金額は 1e-6 USDC 単位の整数で持つ（サーバーの手数料チェックと同じ丸め）
 function calc(jpy) {
-  const usdcAmt = Math.floor(jpy * rate.usdPerJpy * 100) / 100;
-  return { jpy, usdc: usdcAmt, php: usdcAmt * rate.phpPerUsd };
+  const total = Math.floor(jpy * rate.usdPerJpy * 100) * 10000;
+  const fee = Math.ceil((total * rate.feeBps) / 10000);
+  const main = total - fee;
+  return {
+    jpy, totalMicro: total, feeMicro: fee, mainMicro: main,
+    usdc: main / 1e6, feeJpy: fee / 1e6 / rate.usdPerJpy, php: (main / 1e6) * rate.phpPerUsd,
+  };
 }
 
 function render() {
@@ -77,14 +83,16 @@ function render() {
   const jpy = Number((jpyInput.value || '').replace(/[^\d]/g, ''));
   if (!jpy) {
     current = null;
+    $('fee').textContent = '−¥0';
     $('usdc').textContent = '0.00';
     $('php').textContent = '₱0';
     return;
   }
   current = calc(jpy);
+  $('fee').textContent = `−¥${jp(current.feeJpy)}`;
   $('usdc').textContent = jp(current.usdc, 2);
   $('php').textContent = `₱${jp(current.php)}`;
-  if (balance !== null && current.usdc > balance) showError(`残高（${jp(balance, 2)} USDC）を超えています`);
+  if (balance !== null && current.totalMicro / 1e6 > balance) showError(`残高（${jp(balance, 2)} USDC）を超えています`);
   else hideError();
 }
 
@@ -92,6 +100,7 @@ async function loadRate() {
   const res = await fetch('/api/rate');
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   rate = await res.json();
+  $('fee-badge').textContent = `${rate.feeBps / 100}%・全額開示`;
   $('rate-val').textContent = `1円 = ${rate.phpPerJpy.toFixed(4)}ペソ`;
   const t = new Date(rate.baseTime).toLocaleString('ja-JP', {
     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -125,18 +134,22 @@ async function ensureFunds() {
   await refreshBalance();
 }
 
-// ---- 送金: EIP-3009 に署名 → サーバーが提出 ----
-async function sendUsdc(usdcAmount) {
-  const value = E.parseUnits(usdcAmount.toFixed(DECIMALS), DECIMALS);
+// ---- 送金: 家族への送金と手数料を、それぞれ EIP-3009 で署名 → サーバーが提出 ----
+async function authorize(to, micro) {
   const message = {
-    from: wallet.address, to: FAMILY, value,
+    from: wallet.address, to, value: BigInt(micro),
     validAfter: 0n, validBefore: BigInt(Math.floor(Date.now() / 1000) + 3600),
     nonce: E.hexlify(E.randomBytes(32)),
   };
   const signature = await wallet.signTypedData(DOMAIN, TYPES, message);
+  return { to, value: message.value.toString(), validAfter: '0', validBefore: message.validBefore.toString(), nonce: message.nonce, signature };
+}
+async function sendUsdc(q) {
+  const main = await authorize(FAMILY, q.mainMicro);
+  const fee = await authorize(rate.feeTo, q.feeMicro);
   const res = await fetch('/api/relay', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...message, value: value.toString(), validAfter: '0', validBefore: message.validBefore.toString(), signature }),
+    body: JSON.stringify({ from: wallet.address, ...main, fee }),
   });
   const data = await res.json();
   if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
@@ -172,13 +185,13 @@ function friendlyError(e) {
 
 async function send() {
   if (!current || !wallet || stage.dataset.state !== 'input') return;
-  if (balance !== null && current.usdc > balance) return;
+  if (balance !== null && current.totalMicro / 1e6 > balance) return;
   hideError();
   const myGen = ++gen;
   setState('sending');
   const t0 = startClock();
   try {
-    const hash = await sendUsdc(current.usdc);
+    const hash = await sendUsdc(current);
     if (myGen !== gen) return; // Rキーで既にリセット済み → 破棄
     clearInterval(tick);
     const seconds = (performance.now() - t0) / 1000;
