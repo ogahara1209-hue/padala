@@ -146,7 +146,7 @@ async function sendUsdc(usdcAmount) {
 // done 画面（左最下部＋右フォン）への反映
 function fillDone(seconds, hash) {
   $('done-sec').textContent = seconds.toFixed(2);
-  $('rx-php').textContent = `₱${jp(current.php)}`;
+  $('rx-php').textContent = `≈₱${jp(current.php)}`;
   $('rx-from').textContent = `mula sa Tokyo · ¥${jp(current.jpy)}`;
   $('rx-usdc').textContent = `${jp(current.usdc, 2)} USDC`;
   $('rx-sec').textContent = seconds.toFixed(2);
