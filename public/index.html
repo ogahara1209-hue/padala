@@ -17,7 +17,7 @@
 
   <header class="app-head">
     <span class="wordmark">PADALA</span>
-    <span class="net" title="Solana devnet（練習用ネット・実際のお金は動きません）">devnet</span>
+    <span class="net" title="Ethereum Sepolia（練習用ネット・実際のお金は動きません）">Sepolia</span>
   </header>
 
   <!-- ─── 0. はじめて ─── -->
@@ -31,7 +31,7 @@
       <li>送るたびに、証明書が残ります</li>
     </ul>
     <button id="create-wallet" class="cta">財布を作る</button>
-    <p class="fine">練習用ネット（devnet）で動いています。実際のお金は動きません。</p>
+    <p class="fine">練習用ネット（Ethereum Sepolia）で動いています。実際のお金は動きません。</p>
   </main>
 
   <!-- ─── 1. 財布 ─── -->
@@ -52,13 +52,13 @@
     <section class="explain">
       <p class="label">入金のしかた</p>
       <ol class="steps-text">
-        <li>登録業者（SBI VCトレード）で円から USDC を買う</li>
-        <li>出庫先に、上のアドレスを登録する</li>
-        <li>出庫する。数秒でここに届きます</li>
+        <li>登録業者（SBI VCトレード）で、円で USDC を買う</li>
+        <li>出庫先に上のアドレスを登録する（受取人「ご本人様」・受取先「その他」に「Padala」・所在国はあなたの国）</li>
+        <li>出庫する。平日 10 時までの予約は、原則、翌銀行営業日までに届きます</li>
       </ol>
       <p class="fine">Padala は円を受け取らず、USDC を買いません。買うのは登録業者、持つのはあなたです。</p>
     </section>
-    <p class="fine" id="sol-line">手数料用 SOL: <span class="num" id="bal-sol">0</span></p>
+    <p class="fine">USDC は Ethereum のネットワークだけで受け取れます。送るときのネットワーク手数料は、練習用ネットでは Padala が負担します。</p>
   </main>
 
   <!-- ─── 2. 送る ─── -->
@@ -80,7 +80,7 @@
     <dl class="quote" id="quote" aria-live="polite">
       <div class="q-row"><dt>仲値<span class="tag">市場レート</span></dt><dd><span class="num" id="q-mid">–</span> <span class="unit">₱ / ¥</span></dd></div>
       <div class="q-row"><dt>レートへの上乗せ</dt><dd class="num">0</dd></div>
-      <div class="q-row"><dt>手数料</dt><dd><span class="num" id="q-fee">ネットワーク手数料のみ</span></dd></div>
+      <div class="q-row"><dt>手数料</dt><dd><span class="num" id="q-fee">0（ネットワーク手数料は Padala が負担）</span></dd></div>
       <div class="q-row q-muted"><dt>チェーンに乗る額</dt><dd><span class="num" id="q-usdc">–</span> USDC</dd></div>
       <p class="q-src">出典 <span id="q-src">–</span>・基準 <span id="q-time">–</span></p>
     </dl>
@@ -106,6 +106,7 @@
       <div><dt>送る額</dt><dd>¥<span class="num" id="c-jpy">0</span></dd></div>
       <div><dt>家族が受け取る額</dt><dd class="big">₱<span class="num" id="c-php">0</span></dd></div>
     </dl>
+    <p class="fine" id="c-first" hidden>この相手に送るのは初めてです。GCash の案内どおり、初めての相手には少額で試してから送ってください。</p>
     <button id="send-btn" class="cta">送る</button>
     <button id="back-btn" class="cta cta-quiet">戻る</button>
   </main>
@@ -143,10 +144,10 @@
         <div><dt>受取額</dt><dd class="big">₱<span class="num" id="r-php">0</span></dd></div>
         <div><dt>確定まで</dt><dd><span class="num" id="r-sec">0</span> 秒</dd></div>
       </dl>
-      <p class="stamp-label">トランザクション署名（改ざんできない記録）</p>
+      <p class="stamp-label">取引の番号（チェーン上の改ざんできない記録）</p>
       <p class="stamp mono" id="r-sig">–</p>
-      <a class="rcp-link" id="r-explorer" href="#" target="_blank" rel="noopener">Solana Explorer で確認 ↗</a>
-      <p class="rcp-fine">扶養控除の申告等に使う際は、税務署・勤務先の指定書式をご確認ください。本証明はチェーン上の記録を転記したものです。</p>
+      <a class="rcp-link" id="r-explorer" href="#" target="_blank" rel="noopener">Etherscan（Sepolia）で確認 ↗</a>
+      <p class="rcp-fine">本証明はチェーン上の記録を転記したものです。扶養控除の「送金関係書類」に当たるかは確認が必要です（自分の財布からの送金は当たらない可能性があります）。</p>
     </article>
     <div class="row-btns">
       <button class="cta" id="print-btn">印刷 / PDF に保存</button>
@@ -175,8 +176,8 @@
   <div class="sheet" id="sheet-topup" hidden>
     <div class="sheet-body">
       <h2 class="h2">入金する</h2>
-      <p class="lead">本番では登録業者から出庫します。この練習用ネットでは、試験用の USDC を受け取れます。</p>
-      <button class="cta" id="fund-btn">試験用の 20 USDC を受け取る</button>
+      <p class="lead">本番では SBI VCトレードから、この財布へ出庫します。練習用ネットでは、その代わりに試験用の USDC を受け取れます。</p>
+      <button class="cta" id="fund-btn">試験用の 5 USDC を受け取る</button>
       <p class="error" id="fund-error" hidden></p>
       <button class="cta cta-quiet" data-close>閉じる</button>
     </div>
@@ -188,9 +189,9 @@
       <h2 class="h2">送る相手を追加</h2>
       <label class="label" for="add-name">名前（表示用）</label>
       <input id="add-name" class="input" placeholder="例: Nanay（マニラ）">
-      <label class="label" for="add-addr">GCrypto の受取アドレス（Solana）</label>
-      <input id="add-addr" class="input mono" placeholder="家族の GCash → GCrypto → Receive → USDC (Solana)">
-      <p class="fine">家族の GCash アプリの GCrypto で「Receive」→ USDC → Solana を選ぶと表示されます。</p>
+      <label class="label" for="add-addr">GCrypto の受取アドレス（USDC・Ethereum）</label>
+      <input id="add-addr" class="input mono" placeholder="0x…">
+      <p class="fine">家族の GCash アプリの GCrypto で「Receive」→ USDC → Ethereum (ERC20) を選ぶと、0x から始まるアドレスが表示されます。ネットワークを間違えると届きません。</p>
       <p class="error" id="add-error" hidden></p>
       <button class="cta" id="add-save">保存</button>
       <button class="cta cta-quiet" data-close>閉じる</button>
@@ -198,9 +199,9 @@
   </div>
 
 </div>
-<p class="stage-caption">Padala · self-custody · Solana devnet</p>
+<p class="stage-caption">Padala · self-custody · Ethereum Sepolia</p>
 </div>
-<script src="vendor/solana-web3.iife.min.js"></script>
+<script src="vendor/ethers.umd.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

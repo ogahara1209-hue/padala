@@ -1,10 +1,12 @@
-// Padala — server
-// Responsibilities (deliberately small, so the app itself never touches user funds):
+// Padala — server (Ethereum Sepolia)
+// Responsibilities (deliberately small, so the app itself never touches user funds or keys):
 //   1. serve static files
 //   2. /api/rate   — mid-market JPY→PHP / JPY→USD (single source: open.er-api.com)
-//   3. /api/fund   — DEVNET ONLY: top up a freshly created browser wallet with test SOL + test USDC.
-//                   In the real product this step is "buy USDC at a licensed exchange and withdraw
-//                   to your own address" — the app only shows the address, it never buys or holds.
+//   3. /api/fund   — TESTNET ONLY: stands in for "withdraw USDC from SBI VC Trade to your own address".
+//                   Sends 5 test USDC to a freshly created browser wallet.
+//   4. /api/relay  — submits the user's signed EIP-3009 TransferWithAuthorization and pays the gas.
+//                   The recipient and amount are inside the user's signature; the server can only
+//                   decide whether to submit it. It never receives a private key.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,22 +15,35 @@ import { createRequire } from 'node:module';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
-const { Connection, Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
-const { getOrCreateAssociatedTokenAccount, getAccount, transfer } = require('@solana/spl-token');
+const { JsonRpcProvider, Wallet, Contract, Signature, verifyTypedData, getAddress, isAddress, formatUnits, formatEther } = require('ethers');
 
-const RPC_URL = process.env.RPC_URL ?? 'https://api.devnet.solana.com';
-const USDC_MINT = new PublicKey(process.env.MINT ?? '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'); // Circle devnet USDC
+const RPC_URL = process.env.RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com';
+const CHAIN_ID = 11155111;                                            // Ethereum Sepolia
+const USDC = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';            // Circle USDC on Sepolia
 const DECIMALS = 6;
 const PORT = Number(process.env.PORT ?? 4173);
-const FUND_SOL = 0.02;   // enough for ~1,000 transfers + a few token-account creations
-const FUND_USDC = 20;    // ≈ ¥3,000 worth of test money
+const FUND_USDC = 5n * 10n ** 6n;                                     // 5 test USDC per top-up
 const PUBLIC = path.join(__dirname, 'public');
 
-const connection = new Connection(RPC_URL, 'confirmed');
-const faucetPath = path.join(__dirname, 'keys', 'sender.json');
-const faucet = fs.existsSync(faucetPath)
-  ? Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(faucetPath, 'utf8'))))
-  : null;
+const USDC_ABI = [
+  'function balanceOf(address) view returns (uint256)',
+  'function transfer(address to, uint256 value) returns (bool)',
+  'function authorizationState(address authorizer, bytes32 nonce) view returns (bool)',
+  'function transferWithAuthorization(address from, address to, uint256 value, uint256 validAfter, uint256 validBefore, bytes32 nonce, uint8 v, bytes32 r, bytes32 s)',
+];
+// Must match the browser exactly (public/app.js).
+const DOMAIN = { name: 'USDC', version: '2', chainId: CHAIN_ID, verifyingContract: USDC };
+const TYPES = {
+  TransferWithAuthorization: [
+    { name: 'from', type: 'address' }, { name: 'to', type: 'address' }, { name: 'value', type: 'uint256' },
+    { name: 'validAfter', type: 'uint256' }, { name: 'validBefore', type: 'uint256' }, { name: 'nonce', type: 'bytes32' },
+  ],
+};
+
+const provider = new JsonRpcProvider(RPC_URL, CHAIN_ID, { staticNetwork: true });
+const opsPath = path.join(__dirname, 'keys', 'eth_ops.json');
+const ops = fs.existsSync(opsPath) ? new Wallet(JSON.parse(fs.readFileSync(opsPath, 'utf8')).privateKey, provider) : null;
+const usdc = new Contract(USDC, USDC_ABI, ops ?? provider);
 
 // ---- rate (one source only; mixing sources produced negative "savings" in the Aug 1 test) ----
 let rateCache = null;
@@ -49,26 +64,56 @@ async function getRate() {
   return rateCache;
 }
 
-// ---- devnet faucet (per-address, once per 12h) ----
+// ---- one transaction at a time from the ops key (avoids nonce collisions) ----
+let queue = Promise.resolve();
+const serial = (fn) => { const run = queue.then(fn, fn); queue = run.catch(() => {}); return run; };
+
+// ---- testnet top-up (per-address, once per 12h) ----
 const funded = new Map();
 async function fund(address) {
-  if (!faucet) return { error: 'Faucet key not configured on this server.' };
-  let owner;
-  try { owner = new PublicKey(address); } catch { return { error: 'Invalid address.' }; }
-  const last = funded.get(address) ?? 0;
-  if (Date.now() - last < 12 * 3600 * 1000) return { error: 'This address was already funded today.' };
+  if (!ops) return { error: 'Test funds are not configured on this server.' };
+  if (!isAddress(address)) return { error: 'Invalid address.' };
+  const to = getAddress(address);
+  const last = funded.get(to) ?? 0;
+  if (Date.now() - last < 12 * 3600 * 1000) return { error: 'This address was already topped up today.' };
+  funded.set(to, Date.now());
+  try {
+    const receipt = await serial(async () => (await usdc.transfer(to, FUND_USDC)).wait(1));
+    return { ok: true, usdc: Number(formatUnits(FUND_USDC, DECIMALS)), hash: receipt.hash };
+  } catch (e) {
+    funded.delete(to);
+    throw e;
+  }
+}
 
-  const solTx = new Transaction().add(SystemProgram.transfer({
-    fromPubkey: faucet.publicKey, toPubkey: owner, lamports: Math.round(FUND_SOL * LAMPORTS_PER_SOL),
-  }));
-  await sendAndConfirmTransaction(connection, solTx, [faucet]);
+// ---- relay a signed EIP-3009 authorization ----
+const relayedPerAddress = new Map();
+async function relay(body) {
+  if (!ops) return { error: 'Relayer is not configured on this server.' };
+  const { from, to, value, validAfter, validBefore, nonce, signature } = body ?? {};
+  if (![from, to].every(isAddress)) return { error: 'Invalid address.' };
+  if (!/^0x[0-9a-fA-F]{64}$/.test(String(nonce))) return { error: 'Invalid nonce.' };
+  const message = { from: getAddress(from), to: getAddress(to), value: BigInt(value), validAfter: BigInt(validAfter), validBefore: BigInt(validBefore), nonce };
+  if (message.value <= 0n) return { error: 'Amount must be positive.' };
+  const signer = verifyTypedData(DOMAIN, TYPES, message, signature);
+  if (signer !== message.from) return { error: 'Signature does not match the sender.' };
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  if (now >= message.validBefore) return { error: 'This authorization has expired. Please send again.' };
+  if (await usdc.authorizationState(message.from, nonce)) return { error: 'This authorization was already used.' };
+  const balance = await usdc.balanceOf(message.from);
+  if (balance < message.value) return { error: 'Insufficient balance.' };
+  // light abuse guard for the shared testnet gas wallet
+  const times = (relayedPerAddress.get(message.from) ?? []).filter((t) => Date.now() - t < 3600 * 1000);
+  if (times.length >= 20) return { error: 'Too many transfers from this address in the last hour.' };
+  relayedPerAddress.set(message.from, [...times, Date.now()]);
 
-  const fromAta = await getOrCreateAssociatedTokenAccount(connection, faucet, USDC_MINT, faucet.publicKey);
-  const toAta = await getOrCreateAssociatedTokenAccount(connection, faucet, USDC_MINT, owner);
-  const sig = await transfer(connection, faucet, fromAta.address, toAta.address, faucet, BigInt(FUND_USDC * 10 ** DECIMALS));
-  funded.set(address, Date.now());
-  const bal = Number((await getAccount(connection, toAta.address)).amount) / 10 ** DECIMALS;
-  return { ok: true, sol: FUND_SOL, usdc: FUND_USDC, balance: bal, signature: sig };
+  const { v, r, s } = Signature.from(signature);
+  const receipt = await serial(async () => {
+    const tx = await usdc.transferWithAuthorization(message.from, message.to, message.value, message.validAfter, message.validBefore, nonce, v, r, s);
+    return tx.wait(1);
+  });
+  if (receipt.status !== 1) return { error: 'The transfer failed on-chain.', hash: receipt.hash };
+  return { ok: true, hash: receipt.hash, blockNumber: receipt.blockNumber };
 }
 
 const MIME = {
@@ -76,16 +121,24 @@ const MIME = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json; charset=utf-8', '.woff2': 'font/woff2',
 };
 
+async function readJson(req) {
+  let body = '';
+  for await (const chunk of req) { body += chunk; if (body.length > 10_000) throw new Error('Request too large.'); }
+  return JSON.parse(body || '{}');
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const json = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
   try {
     if (url.pathname === '/api/rate') return json(200, await getRate());
     if (url.pathname === '/api/fund' && req.method === 'POST') {
-      let body = '';
-      for await (const chunk of req) body += chunk;
-      const { address } = JSON.parse(body || '{}');
+      const { address } = await readJson(req);
       const result = await fund(String(address ?? ''));
+      return json(result.error ? 400 : 200, result);
+    }
+    if (url.pathname === '/api/relay' && req.method === 'POST') {
+      const result = await relay(await readJson(req));
       return json(result.error ? 400 : 200, result);
     }
     let file = path.join(PUBLIC, url.pathname === '/' ? 'index.html' : url.pathname);
@@ -94,20 +147,18 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
     res.end(fs.readFileSync(file));
   } catch (e) {
-    json(500, { error: String(e.message ?? e) });
+    json(500, { error: String(e.shortMessage ?? e.message ?? e) });
   }
 });
 
 server.listen(PORT, async () => {
-  console.log(`Padala: http://localhost:${PORT}  (RPC ${RPC_URL})`);
-  if (faucet) {
+  console.log(`Padala: http://localhost:${PORT}  (Ethereum Sepolia via ${RPC_URL})`);
+  if (ops) {
     try {
-      const ata = await getOrCreateAssociatedTokenAccount(connection, faucet, USDC_MINT, faucet.publicKey);
-      const bal = Number((await getAccount(connection, ata.address)).amount) / 10 ** DECIMALS;
-      const sol = (await connection.getBalance(faucet.publicKey)) / LAMPORTS_PER_SOL;
-      console.log(`devnet faucet ${faucet.publicKey.toBase58()}: ${bal} USDC / ${sol.toFixed(3)} SOL`);
-    } catch (e) { console.log(`faucet balance check failed: ${e.message}`); }
+      const [u, eth] = await Promise.all([usdc.balanceOf(ops.address), provider.getBalance(ops.address)]);
+      console.log(`ops ${ops.address}: ${formatUnits(u, DECIMALS)} USDC / ${formatEther(eth)} ETH`);
+    } catch (e) { console.log(`ops balance check failed: ${e.message}`); }
   } else {
-    console.log('no keys/sender.json — /api/fund disabled');
+    console.log('no keys/eth_ops.json — /api/fund and /api/relay disabled');
   }
 });
