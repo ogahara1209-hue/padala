@@ -69,7 +69,7 @@ function syncWidth() {
 // 金額は 1e-6 USDC 単位の整数で持つ（サーバーの手数料チェックと同じ丸め）
 function calc(jpy) {
   const total = Math.floor(jpy * rate.usdPerJpy * 100) * 10000;
-  const fee = Math.ceil((total * rate.feeBps) / 10000);
+  const fee = Math.max(Math.ceil((total * rate.feeBps) / 10000), rate.minFeeMicro || 0); // 0.95%、ただしその時のガス代を下限に
   const main = total - fee;
   return {
     jpy, totalMicro: total, feeMicro: fee, mainMicro: main,
@@ -92,7 +92,8 @@ function render() {
   $('fee').textContent = `−¥${jp(current.feeJpy)}`;
   $('usdc').textContent = jp(current.usdc, 2);
   $('php').textContent = `₱${jp(current.php)}`;
-  if (balance !== null && current.totalMicro / 1e6 > balance) showError(`残高（${jp(balance, 2)} USDC）を超えています`);
+  if (current.mainMicro <= 0) showError('この金額では、ネットワーク手数料に足りません');
+  else if (balance !== null && current.totalMicro / 1e6 > balance) showError(`残高（${jp(balance, 2)} USDC）を超えています`);
   else hideError();
 }
 
@@ -185,7 +186,7 @@ function friendlyError(e) {
 
 async function send() {
   if (!current || !wallet || stage.dataset.state !== 'input') return;
-  if (balance !== null && current.totalMicro / 1e6 > balance) return;
+  if (current.mainMicro <= 0 || (balance !== null && current.totalMicro / 1e6 > balance)) return;
   hideError();
   const myGen = ++gen;
   setState('sending');

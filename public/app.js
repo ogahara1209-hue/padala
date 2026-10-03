@@ -95,7 +95,7 @@ async function loadRate() {
 // amounts in 1e-6 USDC integers (same rounding as the server's fee check)
 function calc(jpy) {
   const total = Math.floor(jpy * rate.usdPerJpy * 100) * 10000;        // what leaves the wallet
-  const fee = Math.ceil((total * rate.feeBps) / 10000);                  // service fee to Padala
+  const fee = Math.max(Math.ceil((total * rate.feeBps) / 10000), rate.minFeeMicro || 0); // 0.95%、ただしその時のガス代を下限に                  // service fee to Padala
   const main = total - fee;                                              // what the family receives
   const usdc = main / 1e6;
   return { jpy, totalMicro: total, feeMicro: fee, mainMicro: main, usdc, feeJpy: fee / 1e6 / rate.usdPerJpy, php: usdc * rate.phpPerUsd, phpPerJpy: rate.phpPerJpy };
@@ -113,9 +113,11 @@ function renderQuote() {
   $('q-php').textContent = jp(quote.php, 0);
   $('q-fee').textContent = `¥${jp(quote.feeJpy, 0)}`;
   const over = quote.totalMicro / 1e6 > balance;
-  $('review-btn').disabled = over || quote.usdc <= 0;
-  $('send-error').hidden = !over;
-  if (over) $('send-error').textContent = `残高（${jp(balance, 2)} USDC）を超えています。「財布」から入金してください。`;
+  const tooSmall = quote.mainMicro <= 0;
+  $('review-btn').disabled = over || tooSmall;
+  $('send-error').hidden = !(over || tooSmall);
+  if (tooSmall) $('send-error').textContent = 'この金額では、ネットワーク手数料に足りません。';
+  else if (over) $('send-error').textContent = `残高（${jp(balance, 2)} USDC）を超えています。「財布」から入金してください。`;
 }
 
 // ───────── address book ─────────

@@ -23,7 +23,8 @@ const USDC = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';            // Circle 
 const DECIMALS = 6;
 const PORT = Number(process.env.PORT ?? 4173);
 const FUND_USDC = 5n * 10n ** 6n;                                     // 5 test USDC per top-up
-const FEE_BPS = 95n;                                                  // service fee 0.95% of the total (provisional, as in the Aug 2 design)
+const FEE_BPS = 95n;
+const GAS_PER_SEND = 2n * 86000n;                                     // family transfer + fee transfer (measured 85,732 each)                                                  // service fee 0.95% of the total (provisional, as in the Aug 2 design)
 const PUBLIC = path.join(__dirname, 'public');
 
 const USDC_ABI = [
@@ -49,7 +50,7 @@ const usdc = new Contract(USDC, USDC_ABI, ops ?? provider);
 // ---- rate (one source only; mixing sources produced negative "savings" in the Aug 1 test) ----
 let rateCache = null;
 async function getRate() {
-  const withFee = (r) => ({ ...r, feeBps: Number(FEE_BPS), feeTo: ops?.address ?? null });
+  const withFee = async (r) => ({ ...r, feeBps: Number(FEE_BPS), feeTo: ops?.address ?? null, minFeeMicro: Number(await minFeeMicro()) });
   if (rateCache && Date.now() - rateCache.fetchedAt < 10 * 60 * 1000) return withFee(rateCache);
   const res = await fetch('https://open.er-api.com/v6/latest/JPY');
   if (!res.ok) throw new Error(`rate API HTTP ${res.status}`);
@@ -64,6 +65,25 @@ async function getRate() {
     fetchedAt: Date.now(),
   };
   return withFee(rateCache);
+}
+
+// ---- minimum fee = what the two submissions cost in gas right now (so a small transfer never runs at a loss) ----
+const mainnet = new JsonRpcProvider(process.env.MAINNET_RPC_URL ?? 'https://ethereum-rpc.publicnode.com', 1, { staticNetwork: true });
+let ethCache = null;
+async function minFeeMicro() {
+  if (!ethCache || Date.now() - ethCache.at > 10 * 60 * 1000) {
+    const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+    const usd = (await res.json())?.ethereum?.usd;
+    if (!usd) throw new Error('ETH price unavailable');
+    ethCache = { usd, at: Date.now() };
+  }
+  // priced at Ethereum MAINNET gas (what a real send costs); Sepolia gas has no real-world price
+  const [block, tip] = await Promise.all([mainnet.getBlock('latest'), mainnet.send('eth_maxPriorityFeePerGas', [])]);
+  const weiPerGas = (block.baseFeePerGas ?? 0n) + BigInt(tip);
+  const wei = GAS_PER_SEND * weiPerGas;
+  // wei → USDC micro units: wei / 1e18 * usd * 1e6, rounded up
+  const usdMicro = BigInt(Math.round(ethCache.usd * 1e6));
+  return (wei * usdMicro + 10n ** 18n - 1n) / 10n ** 18n;
 }
 
 // ---- one transaction at a time from the ops key (avoids nonce collisions) ----
@@ -119,6 +139,8 @@ async function relay(body) {
   if (main.value <= 0n) return { error: 'Amount must be positive.' };
   if (feeMsg.to !== ops.address) return { error: 'The fee must be paid to Padala.' };
   if (feeMsg.value * 10000n < (main.value + feeMsg.value) * FEE_BPS) return { error: 'The fee is lower than shown.' };
+  // gas moves between quote and send: accept down to half of the current gas floor
+  if (feeMsg.value * 2n < await minFeeMicro()) return { error: 'The fee does not cover the network cost. Please send again.' };
   for (const [m, sig] of [[main, body.signature], [feeMsg, fee.signature]]) {
     const err = await checkAuth(m, sig);
     if (err) return { error: err };
