@@ -9,7 +9,11 @@ Padala lets a sender in Japan buy USDC at SBI VC Trade (a registered Japanese ex
 
 ## Problem
 
-Under SBI VC Trade's published withdrawal rules, USDC cannot be withdrawn directly to PDAX, which runs GCash's GCrypto. A sender needs their own wallet in between.
+Filipinos working in Japan send what they earn home, and it shrinks on the way. World Bank data: sending money from Japan costs 7.11% on average, the second highest in the G20.
+
+## Why now
+
+Both ends exist. In Japan you can buy USDC at a registered exchange and withdraw it to your own wallet. In the Philippines, families receive USDC inside GCash, the app they already use. Padala connects the two: the sender sends USDC from their own wallet straight to the family's GCash, no one holds the money in between, and the fee and the mid-rate estimate are shown before sending.
 
 ## How it works
 
