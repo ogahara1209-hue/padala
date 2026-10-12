@@ -18,12 +18,12 @@ const TYPES = {
   ],
 };
 // Test stand-in for a family member's GCash GCrypto USDC (Ethereum) address.
-const DEFAULT_BOOK = [{ name: 'Maria（マニラ）', address: '0x09C4Fa99386bf791AD96658B1ebf456DDDe4b33B' }];
+const DEFAULT_BOOK = [{ name: 'Maria (Manila)', address: '0x09C4Fa99386bf791AD96658B1ebf456DDDe4b33B' }];
 
 const provider = new E.JsonRpcProvider(RPC, CHAIN_ID, { staticNetwork: true });
 const usdc = new E.Contract(USDC, ['function balanceOf(address) view returns (uint256)'], provider);
 const $ = (id) => document.getElementById(id);
-const jp = (n, d = 0) => Number(n).toLocaleString('ja-JP', { maximumFractionDigits: d, minimumFractionDigits: d });
+const jp = (n, d = 0) => Number(n).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
 const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 const store = {
   get: (k, f) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch { return f; } },
@@ -90,7 +90,7 @@ async function loadRate() {
   rate = await res.json();
   $('q-mid').textContent = rate.phpPerJpy.toFixed(4);
   $('q-src').textContent = rate.source;
-  $('q-time').textContent = new Date(rate.baseTime).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  $('q-time').textContent = new Date(rate.baseTime).toLocaleString('en-US', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 // amounts in 1e-6 USDC integers (same rounding as the server's fee check)
 function calc(jpy) {
@@ -116,8 +116,8 @@ function renderQuote() {
   const tooSmall = quote.mainMicro <= 0;
   $('review-btn').disabled = over || tooSmall;
   $('send-error').hidden = !(over || tooSmall);
-  if (tooSmall) $('send-error').textContent = 'この金額では、ネットワーク手数料に足りません。';
-  else if (over) $('send-error').textContent = `残高（${jp(balance, 2)} USDC）を超えています。「財布」から入金してください。`;
+  if (tooSmall) $('send-error').textContent = 'This amount does not cover the network fee.';
+  else if (over) $('send-error').textContent = `This exceeds your balance (${jp(balance, 2)} USDC). Deposit from "Wallet".`;
 }
 
 // ───────── address book ─────────
@@ -134,7 +134,7 @@ function renderBook() {
   }
   const add = document.createElement('button');
   add.className = 'person add';
-  add.textContent = '＋ 追加';
+  add.textContent = '+ Add';
   add.addEventListener('click', () => openSheet('sheet-add'));
   el.appendChild(add);
 }
@@ -145,7 +145,7 @@ function addHistory(entry) { const h = history(); h.unshift(entry); store.set('p
 function receiptNo(d, n) { const p = (x) => String(x).padStart(2, '0'); return `PDL-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${String(n).padStart(3, '0')}`; }
 function showReceipt(e) {
   $('r-no').textContent = e.no;
-  $('r-time').textContent = new Date(e.time).toLocaleString('ja-JP');
+  $('r-time').textContent = new Date(e.time).toLocaleString('en-US');
   $('r-from').textContent = short(e.from);
   $('r-to').textContent = `${e.toName} · ${short(e.to)}`;
   $('r-jpy').textContent = jp(e.jpy, 0);
@@ -160,8 +160,8 @@ function showReceipt(e) {
     u.searchParams.set('sig', e.sig); u.searchParams.set('php', Math.round(e.php)); u.searchParams.set('usdc', e.usdc);
     u.searchParams.set('name', e.toName); u.searchParams.set('from', e.fromName || 'Kanji');
     await navigator.clipboard.writeText(u.toString()).catch(() => {});
-    $('family-link').textContent = 'コピーしました';
-    setTimeout(() => { $('family-link').textContent = '家族に知らせるリンクをコピー'; }, 1800);
+    $('family-link').textContent = 'Copied';
+    setTimeout(() => { $('family-link').textContent = 'Copy link for your family'; }, 1800);
   };
   show('screen-receipt');
 }
@@ -175,7 +175,7 @@ function renderHistory() {
     const d = new Date(e.time);
     if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) month += e.jpy;
     const li = document.createElement('li');
-    li.innerHTML = `<button class="hist-row"><span class="h-l"><span class="h-name">${e.toName}</span><span class="h-date">${d.toLocaleDateString('ja-JP')}</span></span><span class="h-r"><span class="num">₱${jp(e.php, 0)}</span><span class="h-jpy">¥${jp(e.jpy, 0)}</span></span></button>`;
+    li.innerHTML = `<button class="hist-row"><span class="h-l"><span class="h-name">${e.toName}</span><span class="h-date">${d.toLocaleDateString('en-US')}</span></span><span class="h-r"><span class="num">₱${jp(e.php, 0)}</span><span class="h-jpy">¥${jp(e.jpy, 0)}</span></span></button>`;
     li.querySelector('button').addEventListener('click', () => showReceipt(e));
     ul.appendChild(li);
   }
@@ -202,18 +202,18 @@ async function doSend() {
   $('status-php').textContent = jp(q.php, 0);
   $('status-to').textContent = to.name;
   $('st-1').className = 'step on'; $('st-2').className = 'step'; $('st-3').className = 'step';
-  $('clock-caption').textContent = 'あなたの端末で署名しています…';
+  $('clock-caption').textContent = 'Signing on your device…';
   $('clock-caption').className = 'clock-caption';
   const t0 = performance.now();
   const tick = setInterval(() => { $('clock').textContent = ((performance.now() - t0) / 1000).toFixed(2); }, 50);
   try {
     $('st-1').className = 'step done'; $('st-2').className = 'step on';
-    $('clock-caption').textContent = 'Ethereum で確定中…（15〜30 秒ほど）';
+    $('clock-caption').textContent = 'Confirming on Ethereum… (about 15–30 s)';
     const sig = await sendUsdc(to.address, q);
     const seconds = (performance.now() - t0) / 1000;
     clearInterval(tick);
     $('clock').textContent = seconds.toFixed(2);
-    $('clock-caption').textContent = '確定しました'; $('clock-caption').className = 'clock-caption ok';
+    $('clock-caption').textContent = 'Confirmed'; $('clock-caption').className = 'clock-caption ok';
     $('st-2').className = 'step done'; $('st-3').className = 'step done';
     const h = history();
     const entry = {
@@ -233,10 +233,10 @@ async function doSend() {
 }
 function friendlyError(e) {
   const m = String(e?.message ?? e);
-  if (/Insufficient balance/i.test(m)) return '残高が足りません。「財布」から入金してください。';
-  if (/expired/i.test(m)) return '時間が経ちすぎました。もう一度送ってください。';
-  if (/Failed to fetch|NetworkError/i.test(m)) return 'ネットワークにつながりません。もう一度お試しください。';
-  return `送れませんでした: ${m}`;
+  if (/Insufficient balance/i.test(m)) return 'Insufficient balance. Deposit from "Wallet".';
+  if (/expired/i.test(m)) return 'Too much time has passed. Please send again.';
+  if (/Failed to fetch|NetworkError/i.test(m)) return 'Cannot reach the network. Please try again.';
+  return `Could not send: ${m}`;
 }
 
 // ───────── wire up ─────────
@@ -248,11 +248,11 @@ $('create-wallet').addEventListener('click', async () => {
 });
 $('copy-addr').addEventListener('click', async () => {
   await navigator.clipboard.writeText(wallet.address).catch(() => {});
-  $('copy-addr').textContent = 'コピーしました'; setTimeout(() => { $('copy-addr').textContent = 'コピー'; }, 1500);
+  $('copy-addr').textContent = 'Copied'; setTimeout(() => { $('copy-addr').textContent = 'Copy'; }, 1500);
 });
 $('show-topup').addEventListener('click', () => openSheet('sheet-topup'));
 $('fund-btn').addEventListener('click', async () => {
-  $('fund-btn').disabled = true; $('fund-btn').textContent = '受け取っています…（30 秒ほど）'; $('fund-error').hidden = true;
+  $('fund-btn').disabled = true; $('fund-btn').textContent = 'Receiving… (about 30 s)'; $('fund-error').hidden = true;
   try {
     const res = await fetch('/api/fund', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: wallet.address }) });
     const data = await res.json();
@@ -261,14 +261,14 @@ $('fund-btn').addEventListener('click', async () => {
     closeSheets();
   } catch (e) {
     $('fund-error').textContent = e.message; $('fund-error').hidden = false;
-  } finally { $('fund-btn').disabled = false; $('fund-btn').textContent = '試験用の 5 USDC を受け取る'; }
+  } finally { $('fund-btn').disabled = false; $('fund-btn').textContent = 'Receive 5 test USDC'; }
 });
 $('jpy').addEventListener('input', () => {
   const digits = $('jpy').value.replace(/[^\d]/g, '');
-  $('jpy').value = digits ? Number(digits).toLocaleString('ja-JP') : '';
+  $('jpy').value = digits ? Number(digits).toLocaleString('en-US') : '';
   renderQuote();
 });
-document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => { $('jpy').value = Number(c.dataset.jpy).toLocaleString('ja-JP'); renderQuote(); }));
+document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => { $('jpy').value = Number(c.dataset.jpy).toLocaleString('en-US'); renderQuote(); }));
 $('review-btn').addEventListener('click', () => {
   $('c-name').textContent = recipient.name; $('c-addr').textContent = recipient.address;
   $('c-jpy').textContent = jp(quote.jpy, 0); $('c-php').textContent = jp(quote.php, 0);
@@ -285,9 +285,9 @@ document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('cli
 $('add-save').addEventListener('click', () => {
   const name = $('add-name').value.trim(), addr = $('add-addr').value.trim();
   $('add-error').hidden = true;
-  if (!E.isAddress(addr)) { $('add-error').textContent = 'アドレスの形式が正しくありません。GCrypto の Receive 画面で USDC・Ethereum (ERC20) を選び、表示された 0x から始まるアドレスをコピーしてください。'; $('add-error').hidden = false; return; }
-  if (addr.toLowerCase() === wallet.address.toLowerCase()) { $('add-error').textContent = '自分のアドレスには送れません。'; $('add-error').hidden = false; return; }
-  if (!name) { $('add-error').textContent = '名前を入れてください。'; $('add-error').hidden = false; return; }
+  if (!E.isAddress(addr)) { $('add-error').textContent = 'This is not a valid address. In GCrypto, open Receive, choose USDC on Ethereum (ERC20), and copy the address that starts with 0x.'; $('add-error').hidden = false; return; }
+  if (addr.toLowerCase() === wallet.address.toLowerCase()) { $('add-error').textContent = 'You cannot send to your own address.'; $('add-error').hidden = false; return; }
+  if (!name) { $('add-error').textContent = 'Please enter a name.'; $('add-error').hidden = false; return; }
   const b = book(); b.push({ name, address: E.getAddress(addr) }); store.set('padala.book', b);
   $('add-name').value = ''; $('add-addr').value = '';
   closeSheets(); renderBook();
@@ -295,7 +295,7 @@ $('add-save').addEventListener('click', () => {
 
 async function boot() {
   $('my-addr').textContent = wallet.address;
-  try { await loadRate(); } catch (e) { $('send-error').textContent = `レートを取得できません（${e.message}）`; $('send-error').hidden = false; }
+  try { await loadRate(); } catch (e) { $('send-error').textContent = `Could not load the rate (${e.message})`; $('send-error').hidden = false; }
   renderBook();
   renderHistory();
   await refreshBalances();

@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Padala — 家族へ、見えるレートで</title>
-<meta name="description" content="日本で働くフィリピン人のための、自分で持つ送金財布。仲値で送り、家族は GCash で受け取る。">
+<title>Padala — Send home at the rate you can see</title>
+<meta name="description" content="A self-custody remittance wallet for Filipinos working in Japan. Send at the mid-market rate; your family receives in GCash.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231b2338'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='700' fill='%23f2b441'%3E₱%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,112 +17,112 @@
 
   <header class="app-head">
     <span class="wordmark">PADALA</span>
-    <span class="net" title="Ethereum Sepolia（練習用ネット・実際のお金は動きません）">Sepolia</span>
+    <span class="net" title="Ethereum Sepolia (test network — no real money moves)">Sepolia</span>
   </header>
 
   <!-- ─── 0. はじめて ─── -->
   <main id="screen-onboard" class="screen" hidden>
-    <p class="eyebrow">はじめに</p>
-    <h1 class="h1">この財布は、<br>あなただけが持ちます。</h1>
-    <p class="lead">鍵はこの端末の中で作られ、Padala は預かりません。送るときも、あなたの端末が署名します。</p>
+    <p class="eyebrow">Welcome</p>
+    <h1 class="h1">This wallet is yours.<br>Only yours.</h1>
+    <p class="lead">The key is created on this device and Padala never holds it. When you send, your device signs.</p>
     <ul class="facts">
-      <li>送る前に、家族が受け取るペソを全部見せます</li>
-      <li>家族は GCash の中で受け取れます</li>
-      <li>送るたびに、証明書が残ります</li>
+      <li>Before you send, you see every peso your family will receive</li>
+      <li>Your family receives inside GCash</li>
+      <li>Every transfer leaves a receipt</li>
     </ul>
-    <button id="create-wallet" class="cta">財布を作る</button>
-    <p class="fine">練習用ネット（Ethereum Sepolia）で動いています。実際のお金は動きません。</p>
+    <button id="create-wallet" class="cta">Create my wallet</button>
+    <p class="fine">Running on a test network (Ethereum Sepolia). No real money moves.</p>
   </main>
 
   <!-- ─── 1. 財布 ─── -->
   <main id="screen-home" class="screen" hidden>
     <section class="balance">
-      <p class="eyebrow">残高</p>
+      <p class="eyebrow">Balance</p>
       <p class="bal-usdc"><span class="num" id="bal-usdc">0.00</span> <span class="unit">USDC</span></p>
-      <p class="bal-jpy">≈ ¥<span class="num" id="bal-jpy">0</span><span class="bal-note">・1 USDC = 1 米ドル</span></p>
+      <p class="bal-jpy">≈ ¥<span class="num" id="bal-jpy">0</span><span class="bal-note"> · 1 USDC = 1 US dollar</span></p>
     </section>
     <section class="addr-card">
-      <p class="label">あなたの入金アドレス</p>
+      <p class="label">Your deposit address</p>
       <p class="mono addr" id="my-addr">…</p>
       <div class="row-btns">
-        <button class="btn-quiet" id="copy-addr">コピー</button>
-        <button class="btn-quiet" id="show-topup">入金する</button>
+        <button class="btn-quiet" id="copy-addr">Copy</button>
+        <button class="btn-quiet" id="show-topup">Deposit</button>
       </div>
     </section>
     <section class="explain">
-      <p class="label">入金のしかた</p>
+      <p class="label">How to deposit</p>
       <ol class="steps-text">
-        <li>登録業者（SBI VCトレード）で、円で USDC を買う</li>
-        <li>出庫先に上のアドレスを登録する（受取人「ご本人様」・受取先「その他」に「Padala」・所在国はあなたの国）</li>
-        <li>出庫する。平日 10 時までの予約は、原則、翌銀行営業日までに届きます</li>
+        <li>Buy USDC with yen at a registered exchange (SBI VC Trade)</li>
+        <li>Register the address above as the withdrawal destination (recipient: yourself; destination: "Other" → "Padala"; country: your country)</li>
+        <li>Withdraw. Requests before 10:00 on weekdays usually arrive by the next banking day</li>
       </ol>
-      <p class="fine">Padala は円を受け取らず、USDC を買いません。買うのは登録業者、持つのはあなたです。</p>
+      <p class="fine">Padala never receives yen and never buys USDC. The exchange sells it; you hold it.</p>
     </section>
-    <p class="fine">USDC は Ethereum のネットワークだけで受け取れます。送るときのネットワーク手数料（ガス代）は、サービス手数料の中から Padala が払います。</p>
+    <p class="fine">USDC is received on the Ethereum network only. The network fee (gas) for sending is paid by Padala out of the service fee.</p>
   </main>
 
   <!-- ─── 2. 送る ─── -->
   <main id="screen-send" class="screen" hidden>
-    <p class="label">送る相手</p>
+    <p class="label">Send to</p>
     <div class="book" id="book"></div>
 
-    <label class="label" for="jpy">送る金額</label>
+    <label class="label" for="jpy">Amount to send</label>
     <div class="amount-row">
       <span class="yen" aria-hidden="true">¥</span>
       <input id="jpy" inputmode="numeric" autocomplete="off" placeholder="0" aria-describedby="quote">
     </div>
-    <div class="chips" role="group" aria-label="金額の例">
+    <div class="chips" role="group" aria-label="Example amounts">
       <button class="chip" data-jpy="5000">¥5,000</button>
       <button class="chip" data-jpy="10000">¥10,000</button>
       <button class="chip" data-jpy="30000">¥30,000</button>
     </div>
 
     <dl class="quote" id="quote" aria-live="polite">
-      <div class="q-row"><dt>仲値<span class="tag">市場レート</span></dt><dd><span class="num" id="q-mid">–</span> <span class="unit">₱ / ¥</span></dd></div>
-      <div class="q-row"><dt>レートへの上乗せ</dt><dd class="num">0</dd></div>
-      <div class="q-row"><dt class="stack">サービス手数料 0.95%<span class="q-sub">仮設定・ネットワーク手数料はここから Padala が払います</span></dt><dd><span class="num" id="q-fee">¥0</span></dd></div>
-      <div class="q-row q-muted"><dt>家族に届く額</dt><dd><span class="num" id="q-usdc">–</span> USDC</dd></div>
-      <p class="q-src">出典 <span id="q-src">–</span>・基準 <span id="q-time">–</span></p>
+      <div class="q-row"><dt>Mid-market<span class="tag">market rate</span></dt><dd><span class="num" id="q-mid">–</span> <span class="unit">₱ / ¥</span></dd></div>
+      <div class="q-row"><dt>Markup on the rate</dt><dd class="num">0</dd></div>
+      <div class="q-row"><dt class="stack">Service fee 0.95%<span class="q-sub">provisional · Padala pays the network fee out of this</span></dt><dd><span class="num" id="q-fee">¥0</span></dd></div>
+      <div class="q-row q-muted"><dt>Your family receives</dt><dd><span class="num" id="q-usdc">–</span> USDC</dd></div>
+      <p class="q-src">Source <span id="q-src">–</span> · as of <span id="q-time">–</span></p>
     </dl>
 
     <section class="receive-card">
-      <p class="rc-label">家族が受け取る額</p>
+      <p class="rc-label">Your family receives</p>
       <p class="rc-amount"><span class="peso">₱</span><span class="num" id="q-php">0</span></p>
       <p class="rc-sub" id="q-to">—</p>
     </section>
 
-    <button id="review-btn" class="cta" disabled>内容を確認する</button>
+    <button id="review-btn" class="cta" disabled>Review</button>
     <p class="error" id="send-error" role="alert" hidden></p>
-    <p class="fine">送った後に取り消せません。次の画面で相手と金額をもう一度確認します。</p>
+    <p class="fine">A transfer cannot be undone. The next screen asks you to check the recipient and the amount once more.</p>
   </main>
 
   <!-- ─── 2b. 確認（誤送金防止） ─── -->
   <main id="screen-confirm" class="screen" hidden>
-    <p class="eyebrow">最終確認</p>
-    <h2 class="h2">この内容で送ります</h2>
+    <p class="eyebrow">Final check</p>
+    <h2 class="h2">You are about to send</h2>
     <dl class="confirm">
-      <div><dt>相手</dt><dd id="c-name">–</dd></div>
-      <div><dt>アドレス</dt><dd class="mono" id="c-addr">–</dd></div>
-      <div><dt>送る額</dt><dd>¥<span class="num" id="c-jpy">0</span></dd></div>
-      <div><dt>家族が受け取る額</dt><dd class="big">₱<span class="num" id="c-php">0</span></dd></div>
+      <div><dt>To</dt><dd id="c-name">–</dd></div>
+      <div><dt>Address</dt><dd class="mono" id="c-addr">–</dd></div>
+      <div><dt>Amount</dt><dd>¥<span class="num" id="c-jpy">0</span></dd></div>
+      <div><dt>Your family receives</dt><dd class="big">₱<span class="num" id="c-php">0</span></dd></div>
     </dl>
-    <p class="fine" id="c-first" hidden>この相手に送るのは初めてです。GCash の案内どおり、初めての相手には少額で試してから送ってください。</p>
-    <button id="send-btn" class="cta">送る</button>
-    <button id="back-btn" class="cta cta-quiet">戻る</button>
+    <p class="fine" id="c-first" hidden>This is your first transfer to this recipient. As GCash advises, try a small amount first.</p>
+    <button id="send-btn" class="cta">Send</button>
+    <button id="back-btn" class="cta cta-quiet">Back</button>
   </main>
 
   <!-- ─── 3. 送信中 ─── -->
   <main id="screen-status" class="screen" hidden>
     <ol class="steps">
-      <li id="st-1" class="step">署名</li>
-      <li id="st-2" class="step">チェーン確定</li>
-      <li id="st-3" class="step">着金</li>
+      <li id="st-1" class="step">Sign</li>
+      <li id="st-2" class="step">Confirm on chain</li>
+      <li id="st-3" class="step">Received</li>
     </ol>
     <div class="clock-wrap">
-      <p class="clock"><span class="num" id="clock">0.00</span><span class="clock-unit">秒</span></p>
-      <p class="clock-caption" id="clock-caption">あなたの端末で署名しています…</p>
+      <p class="clock"><span class="num" id="clock">0.00</span><span class="clock-unit">s</span></p>
+      <p class="clock-caption" id="clock-caption">Signing on your device…</p>
     </div>
-    <p class="status-amount">₱<span class="num" id="status-php">0</span> を <span id="status-to">—</span> へ</p>
+    <p class="status-amount">₱<span class="num" id="status-php">0</span> to <span id="status-to">—</span></p>
   </main>
 
   <!-- ─── 4. 証明書 ─── -->
@@ -132,69 +132,69 @@
         <span class="wordmark small">PADALA</span>
         <span class="rcp-no mono" id="r-no">PDL-0000</span>
       </header>
-      <p class="rcp-title">送金証明</p>
-      <p class="rcp-sub">Remittance receipt · on-chain</p>
+      <p class="rcp-title">Remittance receipt</p>
+      <p class="rcp-sub">Recorded on Ethereum</p>
       <dl class="rcp">
-        <div><dt>日時</dt><dd id="r-time">–</dd></div>
-        <div><dt>送金者</dt><dd class="mono" id="r-from">–</dd></div>
-        <div><dt>受取人</dt><dd id="r-to">–</dd></div>
-        <div><dt>送金額</dt><dd>¥<span class="num" id="r-jpy">0</span></dd></div>
-        <div><dt>換算</dt><dd><span class="num" id="r-usdc">0</span> USDC</dd></div>
-        <div><dt>適用レート（仲値）</dt><dd><span class="num" id="r-rate">0</span> ₱/¥</dd></div>
-        <div><dt>受取額</dt><dd class="big">₱<span class="num" id="r-php">0</span></dd></div>
-        <div><dt>確定まで</dt><dd><span class="num" id="r-sec">0</span> 秒</dd></div>
+        <div><dt>Date</dt><dd id="r-time">–</dd></div>
+        <div><dt>From</dt><dd class="mono" id="r-from">–</dd></div>
+        <div><dt>To</dt><dd id="r-to">–</dd></div>
+        <div><dt>Amount</dt><dd>¥<span class="num" id="r-jpy">0</span></dd></div>
+        <div><dt>Converted</dt><dd><span class="num" id="r-usdc">0</span> USDC</dd></div>
+        <div><dt>Rate (mid-market)</dt><dd><span class="num" id="r-rate">0</span> ₱/¥</dd></div>
+        <div><dt>Received</dt><dd class="big">₱<span class="num" id="r-php">0</span></dd></div>
+        <div><dt>Time to confirm</dt><dd><span class="num" id="r-sec">0</span> s</dd></div>
       </dl>
-      <p class="stamp-label">取引の番号（チェーン上の改ざんできない記録）</p>
+      <p class="stamp-label">Transaction hash (a record on chain that cannot be altered)</p>
       <p class="stamp mono" id="r-sig">–</p>
-      <a class="rcp-link" id="r-explorer" href="#" target="_blank" rel="noopener">Etherscan（Sepolia）で確認 ↗</a>
-      <p class="rcp-fine">本証明はチェーン上の記録を転記したものです。扶養控除の「送金関係書類」に当たるかは確認が必要です（自分の財布からの送金は当たらない可能性があります）。</p>
+      <a class="rcp-link" id="r-explorer" href="#" target="_blank" rel="noopener">View on Etherscan (Sepolia) ↗</a>
+      <p class="rcp-fine">This receipt transcribes the record on chain. Whether it qualifies as a "remittance document" for Japanese dependent deductions is not confirmed (transfers from your own wallet may not qualify).</p>
     </article>
     <div class="row-btns">
-      <button class="cta" id="print-btn">印刷 / PDF に保存</button>
+      <button class="cta" id="print-btn">Print / Save as PDF</button>
     </div>
     <div class="row-btns">
-      <button class="btn-quiet" id="family-link">家族に知らせるリンクをコピー</button>
-      <button class="btn-quiet" id="to-history">履歴へ</button>
+      <button class="btn-quiet" id="family-link">Copy link for your family</button>
+      <button class="btn-quiet" id="to-history">History</button>
     </div>
   </main>
 
   <!-- ─── 5. 履歴 ─── -->
   <main id="screen-history" class="screen" hidden>
-    <p class="eyebrow">履歴</p>
-    <p class="hist-sum">今月 ¥<span class="num" id="h-month">0</span>・累計 <span class="num" id="h-count">0</span> 件</p>
+    <p class="eyebrow">History</p>
+    <p class="hist-sum">This month ¥<span class="num" id="h-month">0</span> · <span class="num" id="h-count">0</span> transfers in total</p>
     <ul class="hist" id="hist"></ul>
-    <p class="empty" id="hist-empty">まだ送金はありません。「送る」から始められます。</p>
+    <p class="empty" id="hist-empty">No transfers yet. Start from "Send".</p>
   </main>
 
   <nav class="tabs" id="tabs" hidden>
-    <button data-screen="screen-send" class="tab on">送る</button>
-    <button data-screen="screen-history" class="tab">履歴</button>
-    <button data-screen="screen-home" class="tab">財布</button>
+    <button data-screen="screen-send" class="tab on">Send</button>
+    <button data-screen="screen-history" class="tab">History</button>
+    <button data-screen="screen-home" class="tab">Wallet</button>
   </nav>
 
   <!-- ─── modal: 入金（devnet） ─── -->
   <div class="sheet" id="sheet-topup" hidden>
     <div class="sheet-body">
-      <h2 class="h2">入金する</h2>
-      <p class="lead">本番では SBI VCトレードから、この財布へ出庫します。練習用ネットでは、その代わりに試験用の USDC を受け取れます。</p>
-      <button class="cta" id="fund-btn">試験用の 5 USDC を受け取る</button>
+      <h2 class="h2">Deposit</h2>
+      <p class="lead">In production you withdraw from SBI VC Trade to this wallet. On the test network, you can receive test USDC instead.</p>
+      <button class="cta" id="fund-btn">Receive 5 test USDC</button>
       <p class="error" id="fund-error" hidden></p>
-      <button class="cta cta-quiet" data-close>閉じる</button>
+      <button class="cta cta-quiet" data-close>Close</button>
     </div>
   </div>
 
   <!-- ─── modal: 相手を追加 ─── -->
   <div class="sheet" id="sheet-add" hidden>
     <div class="sheet-body">
-      <h2 class="h2">送る相手を追加</h2>
-      <label class="label" for="add-name">名前（表示用）</label>
-      <input id="add-name" class="input" placeholder="例: Nanay（マニラ）">
-      <label class="label" for="add-addr">GCrypto の受取アドレス（USDC・Ethereum）</label>
+      <h2 class="h2">Add a recipient</h2>
+      <label class="label" for="add-name">Name (for display)</label>
+      <input id="add-name" class="input" placeholder="e.g. Nanay (Manila)">
+      <label class="label" for="add-addr">GCrypto receive address (USDC · Ethereum)</label>
       <input id="add-addr" class="input mono" placeholder="0x…">
-      <p class="fine">家族の GCash アプリの GCrypto で「Receive」→ USDC → Ethereum (ERC20) を選ぶと、0x から始まるアドレスが表示されます。ネットワークを間違えると届きません。</p>
+      <p class="fine">In your family&#39;s GCash app, open GCrypto → "Receive" → USDC → Ethereum (ERC20). An address starting with 0x appears. The wrong network means the money will not arrive.</p>
       <p class="error" id="add-error" hidden></p>
-      <button class="cta" id="add-save">保存</button>
-      <button class="cta cta-quiet" data-close>閉じる</button>
+      <button class="cta" id="add-save">Save</button>
+      <button class="cta cta-quiet" data-close>Close</button>
     </div>
   </div>
 

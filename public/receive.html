@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="fil">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Padala — Money received</title>
+<title>Padala — Natanggap ang pera</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231b2338'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='700' fill='%23f2b441'%3E₱%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,24 +20,24 @@
   <main class="screen screen-rx">
     <div class="rx-card">
       <p class="rx-check" aria-hidden="true">✓</p>
-      <p class="rx-label">Money received</p>
+      <p class="rx-label">Natanggap mo ang pera</p>
       <p class="rx-amount"><span class="peso">₱</span><span class="num" id="rx-php">0</span></p>
-      <p class="rx-from">from <span id="rx-from">—</span> in Japan · for <span id="rx-name">you</span></p>
-      <p class="rx-proof" id="rx-proof">Checking on Ethereum…</p>
+      <p class="rx-from">mula kay <span id="rx-from">—</span> sa Japan · para kay <span id="rx-name">iyo</span></p>
+      <p class="rx-proof" id="rx-proof">Sinusuri sa Ethereum…</p>
     </div>
 
-    <p class="label">Turn it into pesos in GCash</p>
+    <p class="label">Gawing piso sa GCash</p>
     <ol class="steps-text en">
-      <li>Open <strong>GCash</strong> → <strong>GCrypto</strong></li>
-      <li>You'll see <strong><span class="num" id="rx-usdc">0</span> USDC</strong> on the Ethereum network (1 USDC = 1 US dollar)</li>
-      <li>Tap <strong>Sell</strong> → choose USDC → pesos go to your GCash balance</li>
+      <li>Buksan ang <strong>GCash</strong> → <strong>GCrypto</strong></li>
+      <li>Makikita mo ang <strong><span class="num" id="rx-usdc">0</span> USDC</strong> sa Ethereum network (1 USDC = 1 US dollar)</li>
+      <li>I-tap ang <strong>Sell</strong> → piliin ang USDC → mapupunta ang piso sa GCash balance mo</li>
     </ol>
-    <p class="fine">GCrypto is run by PDAX, a BSP-licensed exchange. Receiving is free. Padala never holds your money.</p>
+    <p class="fine">Ang GCrypto ay pinapatakbo ng PDAX, isang exchange na lisensyado ng BSP. Libre ang pagtanggap. Hindi hawak ng Padala ang pera mo.</p>
 
-    <p class="label">Or keep it in dollars</p>
-    <p class="lead small">You don't have to convert today. USDC stays worth one US dollar until you need pesos.</p>
+    <p class="label">O panatilihin sa dolyar</p>
+    <p class="lead small">Hindi mo kailangang i-convert ngayon. Mananatiling isang US dollar ang halaga ng USDC hanggang kailanganin mo ng piso.</p>
 
-    <a class="rcp-link" id="rx-explorer" href="#" target="_blank" rel="noopener">View the on-chain receipt ↗</a>
+    <a class="rcp-link" id="rx-explorer" href="#" target="_blank" rel="noopener">Tingnan ang resibo sa chain ↗</a>
   </main>
 </div>
 <p class="stage-caption">Padala · self-custody · Ethereum Sepolia (test network — in this test the money arrives at a test address, not a real GCash account)</p>
@@ -47,21 +47,21 @@
 (async () => {
   const q = new URLSearchParams(location.search);
   const $ = (id) => document.getElementById(id);
-  const n = (v, d = 0) => Number(v).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+  const n = (v, d = 0) => Number(v).toLocaleString('en-PH', { maximumFractionDigits: d, minimumFractionDigits: d });
   $('rx-php').textContent = n(q.get('php') || 0);
   $('rx-usdc').textContent = n(q.get('usdc') || 0, 2);
-  $('rx-from').textContent = q.get('from') || 'family';
-  $('rx-name').textContent = q.get('name') || 'you';
+  $('rx-from').textContent = q.get('from') || 'pamilya';
+  $('rx-name').textContent = q.get('name') || 'iyo';
   const hash = q.get('sig');
-  if (!hash || !/^0x[0-9a-fA-F]{64}$/.test(hash)) { $('rx-proof').textContent = 'No transaction reference.'; return; }
+  if (!hash || !/^0x[0-9a-fA-F]{64}$/.test(hash)) { $('rx-proof').textContent = 'Walang reference ng transaksyon.'; return; }
   $('rx-explorer').href = `https://sepolia.etherscan.io/tx/${hash}`;
   try {
     const provider = new ethers.JsonRpcProvider('https://ethereum-sepolia-rpc.publicnode.com', 11155111, { staticNetwork: true });
     const r = await provider.getTransactionReceipt(hash);
-    if (r && r.status === 1) $('rx-proof').textContent = `Confirmed on Ethereum · block ${r.blockNumber}`;
-    else if (r && r.status === 0) $('rx-proof').textContent = 'This transfer failed on-chain.';
-    else $('rx-proof').textContent = 'Not found yet — check again in a moment.';
-  } catch (e) { $('rx-proof').textContent = 'Could not reach the network. The receipt link still works.'; }
+    if (r && r.status === 1) $('rx-proof').textContent = `Nakumpirma sa Ethereum · block ${r.blockNumber}`;
+    else if (r && r.status === 0) $('rx-proof').textContent = 'Nabigo ang padalang ito sa chain.';
+    else $('rx-proof').textContent = 'Hindi pa nakikita — subukan ulit mamaya.';
+  } catch (e) { $('rx-proof').textContent = 'Hindi maabot ang network. Gumagana pa rin ang link ng resibo.'; }
 })();
 </script>
 </body>
