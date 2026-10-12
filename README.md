@@ -1,18 +1,47 @@
-# Padala — a self-custody USDC wallet for Filipinos in Japan sending money home
+# Padala
+![Padala logo](assets/logo.png)
 
-Crypto World's Fair (Colosseum) 2026 entry. **Ethereum Sepolia** (test network).
+**A self-custody USDC wallet for Filipino workers in Japan sending money to family in GCash.**
 
-## What it does
-JPY → (SBI VC Trade: buy USDC, withdraw to your own address) → **Padala wallet** → family's GCash GCrypto USDC (Ethereum) address → (GCash: sell to PHP)
+## Overview
 
-- The key is created and kept in the browser. Padala never holds keys or funds.
-- Sending: the user signs an EIP-3009 `TransferWithAuthorization` (recipient, amount and expiry are inside the signature). The server submits it and pays the gas, so the user only needs USDC. The server cannot change the recipient or the amount.
-- Why a plain wallet (EOA) and not a smart account: SBI VC Trade does not withdraw to contract addresses, and PDAX (GCrypto) processes deposits from contract-based wallets manually.
-- Testnet stand-ins: `/api/fund` sends 5 test USDC in place of an SBI VC withdrawal; the default recipient is a test address in place of a real GCrypto address.
+Padala lets a sender in Japan buy USDC at SBI VC Trade (a registered Japanese exchange), withdraw it to their own Padala wallet, and send it to a family member's GCash GCrypto USDC address. The sender only signs an EIP-3009 `transferWithAuthorization`; Padala's relayer submits it and pays the gas. Padala never holds keys or funds.
 
-Plan and acceptance checks: `docs/ETH_PLAN.md`.
+## Problem
+
+Under SBI VC Trade's published withdrawal rules, USDC cannot be withdrawn directly to PDAX, which runs GCash's GCrypto. A sender needs their own wallet in between.
+
+## How it works
+
+```
+JPY --(SBI VC Trade: buy USDC, withdraw)--> Padala wallet (sender's own key, Ethereum)
+    --(sign EIP-3009; relayer pays gas)--> family's GCash GCrypto USDC address
+    --(GCash: sell to PHP)--> pesos
+```
+
+- Exchange happens in SBI VC Trade and GCash. Padala only sends.
+- The relayer cannot change the recipient or the amount; they are inside the sender's signature.
+
+## Status
+
+Works end to end on the Ethereum Sepolia testnet: create a wallet, receive test USDC (standing in for an SBI VC Trade withdrawal), send, and the family page shows the on-chain confirmation. Not connected to real GCash accounts yet.
+
+## Tech stack
+
+Plain HTML/CSS/JavaScript, ethers.js, EIP-3009 (Circle USDC), Node.js relayer, Ethereum Sepolia. Built with help from Claude Code.
+
+## Next steps
+
+- Send a small real transfer to a GCrypto address to confirm how deposits are handled
+- Test with Filipino workers in Japan and their families
+- Move from Sepolia to Ethereum mainnet
+
+## Fee
+
+Padala charges a service fee on each transfer: 0.95% of each transfer (a provisional rate), and never less than the current mainnet gas cost of the transfer. The fee is shown to the sender before signing. On Sepolia, the fee is confirmed to arrive at Padala's address.
 
 ## Prior work disclosure
+
 The following were created before the hackathon period (Aug 1–16, 2026) and are disclosed as pre-existing work:
 - `scripts/01_wallet_setup.ts`, `02_mint_test_token.ts`, `03_send.ts`, `05_sweep_back.ts` — Solana devnet USDC transfer scripts (Aug 1–3)
 - the original `server.mjs` and `public/` 3-screen demo UI on Solana (Aug 1–2, styling Aug 16)
@@ -20,8 +49,22 @@ The following were created before the hackathon period (Aug 1–16, 2026) and ar
 All work from Sep 23, 2026 onward is hackathon-period work and is tracked in the commit history (Sep 23: 5-screen wallet + family page on Solana; Oct 3: rebuilt on Ethereum Sepolia with gasless EIP-3009 relay).
 
 ## Run
+
 ```
 npm install
 # keys/eth_ops.json = {"address": "...", "privateKey": "..."} — a Sepolia key holding test ETH (gas) and test USDC (top-ups). Not committed.
 node server.mjs   # http://localhost:4173
 ```
+
+Build plan and acceptance checks: [docs/ETH_PLAN.md](docs/ETH_PLAN.md)
+
+## Pitch
+
+- [Pitch deck (PDF)](docs/pitch.pdf)
+- [Pitch script](docs/pitch-script.md)
+
+## Team
+
+- Kanji Ogahara (Solune Web, Japan) — solo builder
+
+Built for the Colosseum Crypto World's Fair hackathon.
